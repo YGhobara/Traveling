@@ -20,7 +20,16 @@ import java.util.List;
 
 public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder> {
 
+    public interface OnPostClickListener {
+        void onPostClick(Post post);
+    }
+
     private List<Post> posts = new ArrayList<>();
+    private final OnPostClickListener listener;
+
+    public PostAdapter(OnPostClickListener listener) {
+        this.listener = listener;
+    }
 
     public void setPosts(List<Post> posts) {
         this.posts = posts;
@@ -56,6 +65,12 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
 
         holder.buttonLike.setOnClickListener(null);
         holder.buttonComment.setOnClickListener(null);
+
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onPostClick(post);
+            }
+        });
     }
 
     @Override

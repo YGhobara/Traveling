@@ -28,7 +28,6 @@ public class FeedFragment extends Fragment {
     private PostRepository postRepository;
 
     public FeedFragment() {
-        // Required empty public constructor
     }
 
     @Nullable
@@ -44,7 +43,7 @@ public class FeedFragment extends Fragment {
 
         recyclerViewPosts.setLayoutManager(new LinearLayoutManager(requireContext()));
 
-        postAdapter = new PostAdapter();
+        postAdapter = new PostAdapter(post -> openPostDetail(post));
         recyclerViewPosts.setAdapter(postAdapter);
 
         postRepository = new PostRepository();
@@ -58,9 +57,7 @@ public class FeedFragment extends Fragment {
         postRepository.getPublicPosts(new PostRepository.OnPostsLoadedListener() {
             @Override
             public void onSuccess(List<Post> posts) {
-                if (!isAdded()) {
-                    return;
-                }
+                if (!isAdded()) return;
 
                 if (posts == null || posts.isEmpty()) {
                     recyclerViewPosts.setVisibility(View.GONE);
@@ -74,9 +71,7 @@ public class FeedFragment extends Fragment {
 
             @Override
             public void onError(Exception exception) {
-                if (!isAdded()) {
-                    return;
-                }
+                if (!isAdded()) return;
 
                 recyclerViewPosts.setVisibility(View.GONE);
                 textEmptyFeed.setVisibility(View.VISIBLE);
@@ -87,5 +82,24 @@ public class FeedFragment extends Fragment {
                         Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void openPostDetail(Post post) {
+        PhotoDetailFragment fragment = new PhotoDetailFragment();
+
+        Bundle args = new Bundle();
+        args.putString("postId", post.getId());
+        args.putString("authorName", post.getAuthorName());
+        args.putString("locationName", post.getLocationName());
+        args.putString("caption", post.getCaption());
+        args.putString("imageUrl", post.getImageUrl());
+        args.putInt("likeCount", post.getLikeCount());
+        fragment.setArguments(args);
+
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .addToBackStack(null)
+                .commit();
     }
 }
