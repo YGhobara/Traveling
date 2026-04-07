@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="travel_primary">#1565C0</color>
+    <color name="travel_on_primary">#FFFFFF</color>
+
+    <color name="travel_secondary">#26A69A</color>
+    <color name="travel_on_secondary">#FFFFFF</color>
+
+    <color name="travel_tertiary">#FFB74D</color>
+    <color name="travel_on_tertiary">#1F2937</color>
+
+    <color name="travel_background">#F6F9FC</color>
+    <color name="travel_on_background">#1F2937</color>
+
+    <color name="travel_surface">#FFFFFF</color>
+    <color name="travel_on_surface">#1F2937</color>
 </resources>

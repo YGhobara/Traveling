@@ -1,8 +1,18 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+
     <style name="Base.Theme.Traveling" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/travel_primary</item>
+        <item name="colorOnPrimary">@color/travel_on_primary</item>
+
+        <item name="colorSecondary">@color/travel_secondary</item>
+        <item name="colorOnSecondary">@color/travel_on_secondary</item>
+
+        <item name="colorTertiary">@color/travel_tertiary</item>
+        <item name="colorOnTertiary">@color/travel_on_tertiary</item>
+
+        <item name="android:colorBackground">@color/travel_background</item>
+        <item name="colorSurface">@color/travel_surface</item>
+        <item name="colorOnSurface">@color/travel_on_surface</item>
     </style>
 
     <style name="Theme.Traveling" parent="Base.Theme.Traveling" />
