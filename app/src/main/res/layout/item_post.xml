@@ -68,7 +68,7 @@
                 android:background="@android:color/transparent"
                 android:contentDescription="Like"
                 android:padding="8dp"
-                android:src="@android:drawable/btn_star_big_off"
+                android:src="@drawable/ic_favorite_outline"
                 app:tint="#6B7280" />
 
             <TextView
@@ -87,7 +87,7 @@
                 android:background="@android:color/transparent"
                 android:contentDescription="Comment"
                 android:padding="8dp"
-                android:src="@android:drawable/ic_menu_edit"
+                android:src="@drawable/ic_comment_outline"
                 app:tint="#6B7280" />
         </LinearLayout>
 
