@@ -1,13 +1,17 @@
 package com.example.traveling.adapters;
 
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.traveling.R;
 import com.example.traveling.models.Post;
 
@@ -38,7 +42,20 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         holder.textAuthorName.setText(post.getAuthorName());
         holder.textLocationName.setText(post.getLocationName());
         holder.textCaption.setText(post.getCaption());
-        holder.textLikeCount.setText(post.getLikeCount() + " likes");
+        holder.textLikeCount.setText(String.valueOf(post.getLikeCount()));
+
+        if (!TextUtils.isEmpty(post.getImageUrl())) {
+            Glide.with(holder.itemView.getContext())
+                    .load(post.getImageUrl())
+                    .placeholder(R.drawable.bg_post_placeholder)
+                    .error(R.drawable.bg_post_placeholder)
+                    .into(holder.imagePost);
+        } else {
+            holder.imagePost.setImageResource(R.drawable.bg_post_placeholder);
+        }
+
+        holder.buttonLike.setOnClickListener(null);
+        holder.buttonComment.setOnClickListener(null);
     }
 
     @Override
@@ -52,13 +69,20 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         TextView textLocationName;
         TextView textCaption;
         TextView textLikeCount;
+        ImageView imagePost;
+        ImageButton buttonLike;
+        ImageButton buttonComment;
 
         public PostViewHolder(@NonNull View itemView) {
             super(itemView);
+
             textAuthorName = itemView.findViewById(R.id.textAuthorName);
             textLocationName = itemView.findViewById(R.id.textLocationName);
             textCaption = itemView.findViewById(R.id.textCaption);
             textLikeCount = itemView.findViewById(R.id.textLikeCount);
+            imagePost = itemView.findViewById(R.id.imagePost);
+            buttonLike = itemView.findViewById(R.id.buttonLike);
+            buttonComment = itemView.findViewById(R.id.buttonComment);
         }
     }
 }
