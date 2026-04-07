@@ -1,18 +1,26 @@
 package com.example.traveling.fragments.auth;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.traveling.R;
+import com.example.traveling.activities.MainActivity;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.auth.FirebaseAuth;
 
 public class RegisterFragment extends Fragment {
+
+    private FirebaseAuth mAuth;
 
     public RegisterFragment() {
         // Required empty public constructor
@@ -25,7 +33,13 @@ public class RegisterFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_register, container, false);
 
-        Button btnGoLogin = view.findViewById(R.id.btn_go_login);
+        mAuth = FirebaseAuth.getInstance();
+
+        TextInputEditText etEmail = view.findViewById(R.id.et_register_email);
+        TextInputEditText etPassword = view.findViewById(R.id.et_register_password);
+        MaterialButton btnRegister = view.findViewById(R.id.btn_register);
+        MaterialButton btnGoLogin = view.findViewById(R.id.btn_go_login);
+
         btnGoLogin.setOnClickListener(v ->
                 requireActivity()
                         .getSupportFragmentManager()
@@ -34,6 +48,37 @@ public class RegisterFragment extends Fragment {
                         .addToBackStack(null)
                         .commit()
         );
+
+        btnRegister.setOnClickListener(v -> {
+            String email = etEmail.getText() != null ? etEmail.getText().toString().trim() : "";
+            String password = etPassword.getText() != null ? etPassword.getText().toString().trim() : "";
+
+            if (TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
+                Toast.makeText(requireContext(), "Veuillez remplir tous les champs", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (password.length() < 6) {
+                Toast.makeText(requireContext(), "Le mot de passe doit contenir au moins 6 caractères", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            mAuth.createUserWithEmailAndPassword(email, password)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(requireContext(), "Compte créé avec succès", Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(requireActivity(), MainActivity.class);
+                            startActivity(intent);
+                            requireActivity().finish();
+                        } else {
+                            Toast.makeText(
+                                    requireContext(),
+                                    "Échec d'inscription : " + (task.getException() != null ? task.getException().getMessage() : ""),
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        }
+                    });
+        });
 
         return view;
     }
