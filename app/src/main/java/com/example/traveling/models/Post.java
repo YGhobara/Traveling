@@ -1,4 +1,6 @@
 package com.example.traveling.models;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Post {
 
@@ -11,6 +13,7 @@ public class Post {
     private long createdAt;
     private int likeCount;
     private boolean publicPost;
+    private List<String> likedBy = new ArrayList<>();
     public Post() {
         // Required empty constructor for Firestore
     }
@@ -91,6 +94,14 @@ public class Post {
 
     public void setLikeCount(int likeCount) {
         this.likeCount = likeCount;
+    }
+
+    public List<String> getLikedBy() { return likedBy; }
+
+    public void setLikedBy(List<String> likedBy) { this.likedBy = likedBy; }
+
+    public boolean isLikedByUser(String userId) {
+        return likedBy != null && likedBy.contains(userId);
     }
 
     public boolean isPublicPost() {

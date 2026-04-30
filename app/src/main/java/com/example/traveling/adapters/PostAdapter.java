@@ -7,7 +7,7 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
-
+import android.graphics.Color;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -18,17 +18,30 @@ import com.example.traveling.models.Post;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder> {
 
     public interface OnPostClickListener {
         void onPostClick(Post post);
     }
 
-    private List<Post> posts = new ArrayList<>();
-    private final OnPostClickListener listener;
+    public interface OnLikeClickListener {
+        void onLikeClick(Post post);
+    }
 
-    public PostAdapter(OnPostClickListener listener) {
-        this.listener = listener;
+    private List<Post> posts = new ArrayList<>();
+    private final OnPostClickListener postClickListener;
+    private final OnLikeClickListener likeClickListener;
+    private String currentUserId;
+
+    public PostAdapter(OnPostClickListener postClickListener, OnLikeClickListener likeClickListener) {
+        this.postClickListener = postClickListener;
+        this.likeClickListener = likeClickListener;
+    }
+
+    public void setCurrentUserId(String currentUserId) {
+        this.currentUserId = currentUserId;
+        notifyDataSetChanged();
     }
 
     public void setPosts(List<Post> posts) {
@@ -47,6 +60,8 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
     @Override
     public void onBindViewHolder(@NonNull PostViewHolder holder, int position) {
         Post post = posts.get(position);
+        boolean likedByCurrentUser = currentUserId != null && post.isLikedByUser(currentUserId);
+
 
         holder.textAuthorName.setText(post.getAuthorName());
         holder.textLocationName.setText(post.getLocationName());
@@ -63,12 +78,21 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             holder.imagePost.setImageResource(R.drawable.bg_post_placeholder);
         }
 
-        holder.buttonLike.setOnClickListener(null);
+        holder.buttonLike.setColorFilter(
+                likedByCurrentUser ? Color.parseColor("#E53935") : Color.parseColor("#6B7280")
+        );
+
+        holder.buttonLike.setOnClickListener(v -> {
+            if (likeClickListener != null) {
+                likeClickListener.onLikeClick(post);
+            }
+        });
+
         holder.buttonComment.setOnClickListener(null);
 
         holder.itemView.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onPostClick(post);
+            if (postClickListener != null) {
+                postClickListener.onPostClick(post);
             }
         });
     }

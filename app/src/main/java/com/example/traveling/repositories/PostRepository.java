@@ -9,6 +9,9 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.Transaction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,5 +57,43 @@ public class PostRepository {
                         listener.onError(e);
                     }
                 });
+    }
+
+    public interface OnPostActionListener {
+        void onSuccess();
+        void onError(Exception exception);
+    }
+
+    public void toggleLike(Post post, String userId, final OnPostActionListener listener) {
+        if (post == null || post.getId() == null || userId == null) {
+            listener.onError(new IllegalArgumentException("Invalid post or user."));
+            return;
+        }
+
+        DocumentReference postRef = db.collection("posts").document(post.getId());
+
+        db.runTransaction((Transaction.Function<Void>) transaction -> {
+                    Post freshPost = transaction.get(postRef).toObject(Post.class);
+
+                    if (freshPost == null) {
+                        throw new IllegalStateException("Post not found.");
+                    }
+
+                    boolean alreadyLiked = freshPost.getLikedBy() != null
+                            && freshPost.getLikedBy().contains(userId);
+
+                    if (alreadyLiked) {
+                        transaction.update(postRef,
+                                "likedBy", FieldValue.arrayRemove(userId),
+                                "likeCount", FieldValue.increment(-1));
+                    } else {
+                        transaction.update(postRef,
+                                "likedBy", FieldValue.arrayUnion(userId),
+                                "likeCount", FieldValue.increment(1));
+                    }
+
+                    return null;
+                }).addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
     }
 }

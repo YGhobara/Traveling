@@ -18,10 +18,13 @@ import com.example.traveling.adapters.PostAdapter;
 import com.example.traveling.models.Post;
 import com.example.traveling.repositories.PostRepository;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
 import java.util.List;
 
 public class FeedFragment extends Fragment {
-
+    private FirebaseAuth firebaseAuth;
     private RecyclerView recyclerViewPosts;
     private TextView textEmptyFeed;
     private PostAdapter postAdapter;
@@ -43,7 +46,15 @@ public class FeedFragment extends Fragment {
 
         recyclerViewPosts.setLayoutManager(new LinearLayoutManager(requireContext()));
 
-        postAdapter = new PostAdapter(post -> openPostDetail(post));
+        firebaseAuth = FirebaseAuth.getInstance();
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+        String currentUserId = currentUser != null ? currentUser.getUid() : null;
+
+        postAdapter = new PostAdapter(
+                post -> openPostDetail(post),
+                post -> toggleLike(post)
+        );
+        postAdapter.setCurrentUserId(currentUserId);
         recyclerViewPosts.setAdapter(postAdapter);
 
         postRepository = new PostRepository();
@@ -101,5 +112,32 @@ public class FeedFragment extends Fragment {
                 .replace(R.id.fragment_container, fragment)
                 .addToBackStack(null)
                 .commit();
+    }
+
+    private void toggleLike(Post post) {
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    "Connectez-vous pour aimer une publication.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        postRepository.toggleLike(post, currentUser.getUid(), new PostRepository.OnPostActionListener() {
+            @Override
+            public void onSuccess() {
+                loadPosts();
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                Toast.makeText(requireContext(),
+                        "Erreur lors du like : " + exception.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
     }
 }
