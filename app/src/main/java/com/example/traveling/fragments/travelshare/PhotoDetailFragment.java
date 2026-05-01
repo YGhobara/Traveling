@@ -16,6 +16,10 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.appcompat.app.AlertDialog;
+
+import com.example.traveling.models.Report;
+import com.example.traveling.repositories.ReportRepository;
 
 import com.bumptech.glide.Glide;
 import com.example.traveling.R;
@@ -43,6 +47,7 @@ public class PhotoDetailFragment extends Fragment {
     private TextView textLikes;
     private ImageButton buttonLike;
     private ImageButton buttonBack;
+    private MaterialButton buttonReport;
 
     private RecyclerView recyclerViewComments;
     private TextView textNoComments;
@@ -53,6 +58,7 @@ public class PhotoDetailFragment extends Fragment {
     private PostRepository postRepository;
     private CommentRepository commentRepository;
     private UserRepository userRepository;
+    private ReportRepository reportRepository;
     private FirebaseAuth firebaseAuth;
 
     private String postId;
@@ -77,6 +83,7 @@ public class PhotoDetailFragment extends Fragment {
         textLikes = view.findViewById(R.id.textDetailLikeCount);
         buttonLike = view.findViewById(R.id.buttonDetailLike);
         buttonBack = view.findViewById(R.id.buttonBack);
+        buttonReport = view.findViewById(R.id.buttonReport);
 
 
         recyclerViewComments = view.findViewById(R.id.recyclerViewComments);
@@ -87,6 +94,7 @@ public class PhotoDetailFragment extends Fragment {
         postRepository = new PostRepository();
         commentRepository = new CommentRepository();
         userRepository = new UserRepository();
+        reportRepository = new ReportRepository();
         firebaseAuth = FirebaseAuth.getInstance();
 
         commentAdapter = new CommentAdapter();
@@ -104,6 +112,7 @@ public class PhotoDetailFragment extends Fragment {
         buttonBack.setOnClickListener(v ->
                 requireActivity().getSupportFragmentManager().popBackStack()
         );
+        buttonReport.setOnClickListener(v -> handleReportClick());
 
         loadFreshPost();
         loadComments();
@@ -346,6 +355,105 @@ public class PhotoDetailFragment extends Fragment {
 
                 Toast.makeText(requireContext(),
                         "Erreur ajout commentaire : " + exception.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void handleReportClick() {
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    "Connectez-vous pour signaler une publication.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (postId == null || postId.isEmpty()) {
+            Toast.makeText(requireContext(),
+                    "Publication introuvable.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        reportRepository.hasUserReported(postId, currentUser.getUid(), new ReportRepository.OnReportCheckListener() {
+            @Override
+            public void onResult(boolean alreadyReported) {
+                if (!isAdded()) return;
+
+                if (alreadyReported) {
+                    Toast.makeText(requireContext(),
+                            "Vous avez déjà signalé cette publication.",
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    showReportReasonDialog(currentUser.getUid());
+                }
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                Toast.makeText(requireContext(),
+                        "Erreur vérification signalement : " + exception.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showReportReasonDialog(String userId) {
+        String[] reasons = {
+                "Contenu inapproprié",
+                "Spam",
+                "Fausse information",
+                "Contenu offensant",
+                "Autre"
+        };
+
+        final String[] selectedReason = {reasons[0]};
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Signaler la publication")
+                .setSingleChoiceItems(reasons, 0, (dialog, which) -> {
+                    selectedReason[0] = reasons[which];
+                })
+                .setNegativeButton("Annuler", null)
+                .setPositiveButton("Envoyer", (dialog, which) -> submitReport(userId, selectedReason[0]))
+                .show();
+    }
+
+    private void submitReport(String userId, String reason) {
+        Report report = new Report(
+                null,
+                postId,
+                userId,
+                reason,
+                System.currentTimeMillis()
+        );
+
+        buttonReport.setEnabled(false);
+
+        reportRepository.createReport(report, new ReportRepository.OnReportActionListener() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+
+                buttonReport.setEnabled(true);
+
+                Toast.makeText(requireContext(),
+                        "Signalement envoyé.",
+                        Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                buttonReport.setEnabled(true);
+
+                Toast.makeText(requireContext(),
+                        "Erreur signalement : " + exception.getMessage(),
                         Toast.LENGTH_LONG).show();
             }
         });

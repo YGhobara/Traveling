@@ -151,6 +151,24 @@
                             android:padding="8dp"
                             android:src="@drawable/ic_comment_outline"
                             app:tint="#6B7280" />
+
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="1dp"
+                            android:layout_weight="1" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/buttonReport"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minHeight="36dp"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:text="Signaler"
+                            android:textSize="12sp"
+                            app:icon="@drawable/ic_report_outline"
+                            app:iconPadding="4dp" />
                     </LinearLayout>
 
                     <View
