@@ -12,15 +12,21 @@ import com.example.traveling.fragments.travelshare.ProfileFragment;
 import com.example.traveling.fragments.travelshare.SearchFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.example.traveling.fragments.travelshare.NewPostFragment;
+import com.cloudinary.android.MediaManager;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
     private BottomNavigationView bottomNavigationView;
+    private static boolean cloudinaryInitialized = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        initCloudinary();
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
@@ -65,5 +71,17 @@ public class MainActivity extends AppCompatActivity {
                 .replace(R.id.fragment_container, fragment)
                 .addToBackStack(null)
                 .commit();
+    }
+
+    private void initCloudinary() {
+        if (cloudinaryInitialized) {
+            return;
+        }
+
+        Map<String, String> config = new HashMap<>();
+        config.put("cloud_name", "ds3dlm4sn");
+
+        MediaManager.init(this, config);
+        cloudinaryInitialized = true;
     }
 }
