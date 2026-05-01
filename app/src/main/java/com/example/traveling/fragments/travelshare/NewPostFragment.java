@@ -22,6 +22,16 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
+import android.net.Uri;
+import android.widget.ImageView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+
+import com.cloudinary.android.MediaManager;
+import com.cloudinary.android.callback.ErrorInfo;
+import com.cloudinary.android.callback.UploadCallback;
+
+import java.util.Map;
 import java.util.ArrayList;
 
 public class NewPostFragment extends Fragment {
@@ -36,8 +46,30 @@ public class NewPostFragment extends Fragment {
     private UserRepository userRepository;
     private FirebaseAuth auth;
 
+    private ImageView imagePreview;
+    private MaterialButton buttonChooseImage;
+    private Uri selectedImageUri;
+
+    private ActivityResultLauncher<String> imagePickerLauncher;
+    private static final String CLOUDINARY_UPLOAD_PRESET = "traveling_unsigned";
+
     public NewPostFragment() {
         // Required empty public constructor
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        imagePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        selectedImageUri = uri;
+                        imagePreview.setImageURI(uri);
+                    }
+                }
+        );
     }
 
     @Nullable
@@ -58,12 +90,17 @@ public class NewPostFragment extends Fragment {
         editImageUrl = view.findViewById(R.id.editImageUrl);
         switchPublic = view.findViewById(R.id.switchPublic);
         buttonPublish = view.findViewById(R.id.buttonPublish);
+        imagePreview = view.findViewById(R.id.imagePreview);
+        buttonChooseImage = view.findViewById(R.id.buttonChooseImage);
 
         postRepository = new PostRepository();
         userRepository = new UserRepository();
         auth = FirebaseAuth.getInstance();
 
         buttonPublish.setOnClickListener(v -> publishPost());
+        buttonChooseImage.setOnClickListener(v ->
+                imagePickerLauncher.launch("image/*")
+        );
     }
 
     private void publishPost() {
@@ -91,8 +128,8 @@ public class NewPostFragment extends Fragment {
             return;
         }
 
-        if (TextUtils.isEmpty(imageUrl)) {
-            editImageUrl.setError("Ajoutez une URL d'image.");
+        if (selectedImageUri == null && TextUtils.isEmpty(imageUrl)) {
+            editImageUrl.setError("Choisissez une image ou ajoutez une URL d'image.");
             return;
         }
 
@@ -107,15 +144,97 @@ public class NewPostFragment extends Fragment {
                     authorName = currentUser.getEmail();
                 }
 
-                createPost(currentUser.getUid(), authorName, caption, location, imageUrl, publicPost);
+                uploadImageIfNeededAndCreatePost(
+                        currentUser.getUid(),
+                        authorName,
+                        caption,
+                        location,
+                        imageUrl,
+                        publicPost
+                );
             }
 
             @Override
             public void onError(Exception exception) {
                 String fallbackName = currentUser.getEmail();
-                createPost(currentUser.getUid(), fallbackName, caption, location, imageUrl, publicPost);
+                uploadImageIfNeededAndCreatePost(
+                        currentUser.getUid(),
+                        fallbackName,
+                        caption,
+                        location,
+                        imageUrl,
+                        publicPost
+                );
             }
         });
+    }
+
+    private void uploadImageIfNeededAndCreatePost(String userId,
+                                                  String authorName,
+                                                  String caption,
+                                                  String location,
+                                                  String fallbackImageUrl,
+                                                  boolean publicPost) {
+        if (selectedImageUri == null) {
+            createPost(userId, authorName, caption, location, fallbackImageUrl, publicPost);
+            return;
+        }
+
+        buttonPublish.setText("Téléversement...");
+
+        MediaManager.get()
+                .upload(selectedImageUri)
+                .unsigned(CLOUDINARY_UPLOAD_PRESET)
+                .callback(new UploadCallback() {
+                    @Override
+                    public void onStart(String requestId) {
+                        // Upload started
+                    }
+
+                    @Override
+                    public void onProgress(String requestId, long bytes, long totalBytes) {
+                        // Optional progress handling later
+                    }
+
+                    @Override
+                    public void onSuccess(String requestId, Map resultData) {
+                        if (!isAdded()) return;
+
+                        Object secureUrlObject = resultData.get("secure_url");
+
+                        if (secureUrlObject == null) {
+                            buttonPublish.setEnabled(true);
+                            buttonPublish.setText("Publier");
+
+                            Toast.makeText(requireContext(),
+                                    "Erreur : URL Cloudinary introuvable.",
+                                    Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        String uploadedImageUrl = secureUrlObject.toString();
+
+                        createPost(userId, authorName, caption, location, uploadedImageUrl, publicPost);
+                    }
+
+                    @Override
+                    public void onError(String requestId, ErrorInfo error) {
+                        if (!isAdded()) return;
+
+                        buttonPublish.setEnabled(true);
+                        buttonPublish.setText("Publier");
+
+                        Toast.makeText(requireContext(),
+                                "Erreur téléversement : " + error.getDescription(),
+                                Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onReschedule(String requestId, ErrorInfo error) {
+                        // Upload rescheduled
+                    }
+                })
+                .dispatch();
     }
 
     private void createPost(String userId,
@@ -124,6 +243,7 @@ public class NewPostFragment extends Fragment {
                             String location,
                             String imageUrl,
                             boolean publicPost) {
+        buttonPublish.setText("Publication...");
         Post post = new Post(
                 null,
                 userId,
@@ -155,6 +275,8 @@ public class NewPostFragment extends Fragment {
             @Override
             public void onError(Exception exception) {
                 buttonPublish.setEnabled(true);
+                buttonPublish.setText("Publier");
+
                 Toast.makeText(requireContext(),
                         "Erreur : " + exception.getMessage(),
                         Toast.LENGTH_SHORT).show();
