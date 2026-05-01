@@ -96,4 +96,35 @@ public class PostRepository {
                 }).addOnSuccessListener(unused -> listener.onSuccess())
                 .addOnFailureListener(listener::onError);
     }
+
+    public interface OnPostLoadedListener {
+        void onSuccess(Post post);
+        void onError(Exception exception);
+    }
+
+    public void getPostById(String postId, final OnPostLoadedListener listener) {
+        if (postId == null || postId.isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid post id."));
+            return;
+        }
+
+        db.collection("posts")
+                .document(postId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Post post = documentSnapshot.toObject(Post.class);
+
+                        if (post != null) {
+                            post.setId(documentSnapshot.getId());
+                            listener.onSuccess(post);
+                        } else {
+                            listener.onError(new IllegalStateException("Post data is invalid."));
+                        }
+                    } else {
+                        listener.onError(new IllegalStateException("Post not found."));
+                    }
+                })
+                .addOnFailureListener(listener::onError);
+    }
 }
