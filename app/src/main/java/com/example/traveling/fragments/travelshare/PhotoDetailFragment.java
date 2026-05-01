@@ -41,6 +41,7 @@ public class PhotoDetailFragment extends Fragment {
     private TextView textCaption;
     private TextView textLikes;
     private ImageButton buttonLike;
+    private ImageButton buttonBack;
 
     private RecyclerView recyclerViewComments;
     private TextView textNoComments;
@@ -73,6 +74,8 @@ public class PhotoDetailFragment extends Fragment {
         textCaption = view.findViewById(R.id.textDetailCaption);
         textLikes = view.findViewById(R.id.textDetailLikeCount);
         buttonLike = view.findViewById(R.id.buttonDetailLike);
+        buttonBack = view.findViewById(R.id.buttonBack);
+
 
         recyclerViewComments = view.findViewById(R.id.recyclerViewComments);
         textNoComments = view.findViewById(R.id.textNoComments);
@@ -96,6 +99,9 @@ public class PhotoDetailFragment extends Fragment {
 
         buttonLike.setOnClickListener(v -> toggleLike());
         buttonSendComment.setOnClickListener(v -> sendComment());
+        buttonBack.setOnClickListener(v ->
+                requireActivity().getSupportFragmentManager().popBackStack()
+        );
 
         loadFreshPost();
         loadComments();

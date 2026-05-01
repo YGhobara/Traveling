@@ -6,6 +6,36 @@
     android:background="@color/travel_background"
     android:orientation="vertical">
 
+    <!-- Top back bar -->
+    <LinearLayout
+        android:id="@+id/detailTopBar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/travel_background"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="16dp">
+
+        <ImageButton
+            android:id="@+id/buttonBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Retour"
+            android:padding="12dp"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/travel_on_surface" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Détail de la photo"
+            android:textColor="@color/travel_on_surface"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <!-- Scrollable content -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"

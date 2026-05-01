@@ -107,11 +107,8 @@ public class FeedFragment extends Fragment {
         args.putInt("likeCount", post.getLikeCount());
         fragment.setArguments(args);
 
-        requireActivity().getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragment_container, fragment)
-                .addToBackStack(null)
-                .commit();
+        ((com.example.traveling.activities.MainActivity) requireActivity())
+                .openFragmentWithBackStack(fragment);
     }
 
     private void toggleLike(Post post) {
