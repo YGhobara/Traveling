@@ -67,6 +67,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         holder.textLocationName.setText(post.getLocationName());
         holder.textCaption.setText(post.getCaption());
         holder.textLikeCount.setText(String.valueOf(post.getLikeCount()));
+        holder.textCommentCount.setText(String.valueOf(post.getCommentCount()));
 
         if (!TextUtils.isEmpty(post.getImageUrl())) {
             Glide.with(holder.itemView.getContext())
@@ -108,6 +109,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         TextView textLocationName;
         TextView textCaption;
         TextView textLikeCount;
+        TextView textCommentCount;
         ImageView imagePost;
         ImageButton buttonLike;
         ImageButton buttonComment;
@@ -119,6 +121,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             textLocationName = itemView.findViewById(R.id.textLocationName);
             textCaption = itemView.findViewById(R.id.textCaption);
             textLikeCount = itemView.findViewById(R.id.textLikeCount);
+            textCommentCount = itemView.findViewById(R.id.textCommentCount);
             imagePost = itemView.findViewById(R.id.imagePost);
             buttonLike = itemView.findViewById(R.id.buttonLike);
             buttonComment = itemView.findViewById(R.id.buttonComment);

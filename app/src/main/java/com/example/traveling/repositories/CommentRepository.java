@@ -9,6 +9,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.FieldValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,11 +74,21 @@ public class CommentRepository {
             return;
         }
 
-        db.collection("posts")
-                .document(postId)
-                .collection("comments")
-                .add(comment)
-                .addOnSuccessListener(documentReference -> listener.onSuccess())
+        db.runTransaction(transaction -> {
+                    // Add comment with auto-generated document id
+                    var commentRef = db.collection("posts")
+                            .document(postId)
+                            .collection("comments")
+                            .document();
+
+                    transaction.set(commentRef, comment);
+
+                    // Increment commentCount on parent post
+                    var postRef = db.collection("posts").document(postId);
+                    transaction.update(postRef, "commentCount", FieldValue.increment(1));
+
+                    return null;
+                }).addOnSuccessListener(unused -> listener.onSuccess())
                 .addOnFailureListener(listener::onError);
     }
 }

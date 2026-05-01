@@ -12,6 +12,7 @@ public class Post {
     private String locationName;
     private long createdAt;
     private int likeCount;
+    private int commentCount;
     private boolean publicPost;
     private List<String> likedBy = new ArrayList<>();
     public Post() {
@@ -20,7 +21,7 @@ public class Post {
 
     public Post(String id, String userId, String authorName, String caption,
                 String imageUrl, String locationName, long createdAt,
-                int likeCount, boolean publicPost) {
+                int likeCount, int commentCount,boolean publicPost) {
         this.id = id;
         this.userId = userId;
         this.authorName = authorName;
@@ -29,6 +30,7 @@ public class Post {
         this.locationName = locationName;
         this.createdAt = createdAt;
         this.likeCount = likeCount;
+        this.commentCount = commentCount;
         this.publicPost = publicPost;
     }
 
@@ -94,6 +96,14 @@ public class Post {
 
     public void setLikeCount(int likeCount) {
         this.likeCount = likeCount;
+    }
+
+    public int getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(int commentCount) {
+        this.commentCount = commentCount;
     }
 
     public List<String> getLikedBy() { return likedBy; }

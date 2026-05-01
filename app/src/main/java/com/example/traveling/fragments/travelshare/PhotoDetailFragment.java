@@ -22,6 +22,8 @@ import com.example.traveling.R;
 import com.example.traveling.adapters.CommentAdapter;
 import com.example.traveling.models.Comment;
 import com.example.traveling.models.Post;
+import com.example.traveling.models.UserProfile;
+import com.example.traveling.repositories.UserRepository;
 import com.example.traveling.repositories.CommentRepository;
 import com.example.traveling.repositories.PostRepository;
 import com.google.android.material.button.MaterialButton;
@@ -48,6 +50,7 @@ public class PhotoDetailFragment extends Fragment {
 
     private PostRepository postRepository;
     private CommentRepository commentRepository;
+    private UserRepository userRepository;
     private FirebaseAuth firebaseAuth;
 
     private String postId;
@@ -78,6 +81,7 @@ public class PhotoDetailFragment extends Fragment {
 
         postRepository = new PostRepository();
         commentRepository = new CommentRepository();
+        userRepository = new UserRepository();
         firebaseAuth = FirebaseAuth.getInstance();
 
         commentAdapter = new CommentAdapter();
@@ -259,21 +263,51 @@ public class PhotoDetailFragment extends Fragment {
             return;
         }
 
-        String authorName = currentUser.getEmail() != null
-                ? currentUser.getEmail()
-                : "Utilisateur";
-
-        Comment comment = new Comment(
-                null,
-                postId,
-                currentUser.getUid(),
-                authorName,
-                text,
-                System.currentTimeMillis()
-        );
-
         buttonSendComment.setEnabled(false);
 
+        userRepository.getUserProfile(currentUser.getUid(), new UserRepository.OnUserProfileLoadedListener() {
+            @Override
+            public void onSuccess(UserProfile userProfile) {
+                if (!isAdded()) return;
+
+                String authorName = userProfile.getDisplayName();
+
+                Comment comment = new Comment(
+                        null,
+                        postId,
+                        currentUser.getUid(),
+                        authorName,
+                        text,
+                        System.currentTimeMillis()
+                );
+
+                addCommentToFirestore(comment);
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                // Fallback for older accounts that do not yet have a Firestore profile
+                String fallbackAuthorName = currentUser.getEmail() != null
+                        ? currentUser.getEmail()
+                        : "Utilisateur";
+
+                Comment comment = new Comment(
+                        null,
+                        postId,
+                        currentUser.getUid(),
+                        fallbackAuthorName,
+                        text,
+                        System.currentTimeMillis()
+                );
+
+                addCommentToFirestore(comment);
+            }
+        });
+    }
+
+    private void addCommentToFirestore(Comment comment) {
         commentRepository.addComment(postId, comment, new CommentRepository.OnCommentActionListener() {
             @Override
             public void onSuccess() {
