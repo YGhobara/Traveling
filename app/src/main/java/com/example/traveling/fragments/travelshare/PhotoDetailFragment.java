@@ -10,6 +10,8 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.Intent;
+import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -48,6 +50,7 @@ public class PhotoDetailFragment extends Fragment {
     private ImageButton buttonLike;
     private ImageButton buttonBack;
     private MaterialButton buttonReport;
+    private MaterialButton buttonOpenMaps;
 
     private RecyclerView recyclerViewComments;
     private TextView textNoComments;
@@ -84,7 +87,7 @@ public class PhotoDetailFragment extends Fragment {
         buttonLike = view.findViewById(R.id.buttonDetailLike);
         buttonBack = view.findViewById(R.id.buttonBack);
         buttonReport = view.findViewById(R.id.buttonReport);
-
+        buttonOpenMaps = view.findViewById(R.id.buttonOpenMaps);
 
         recyclerViewComments = view.findViewById(R.id.recyclerViewComments);
         textNoComments = view.findViewById(R.id.textNoComments);
@@ -113,6 +116,7 @@ public class PhotoDetailFragment extends Fragment {
                 requireActivity().getSupportFragmentManager().popBackStack()
         );
         buttonReport.setOnClickListener(v -> handleReportClick());
+        buttonOpenMaps.setOnClickListener(v -> openLocationInMaps());
 
         loadFreshPost();
         loadComments();
@@ -457,5 +461,30 @@ public class PhotoDetailFragment extends Fragment {
                         Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void openLocationInMaps() {
+        String locationName = textLocation.getText() != null
+                ? textLocation.getText().toString().trim()
+                : "";
+
+        if (TextUtils.isEmpty(locationName)) {
+            Toast.makeText(requireContext(),
+                    "Lieu non disponible.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Uri uri = Uri.parse("geo:0,0?q=" + Uri.encode(locationName));
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        intent.setPackage("com.google.android.apps.maps");
+
+        if (intent.resolveActivity(requireActivity().getPackageManager()) != null) {
+            startActivity(intent);
+        } else {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://www.google.com/maps/search/?api=1&query=" + Uri.encode(locationName)));
+            startActivity(browserIntent);
+        }
     }
 }

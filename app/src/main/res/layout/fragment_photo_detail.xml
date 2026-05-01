@@ -115,6 +115,16 @@
                         android:textSize="12sp"
                         android:textStyle="bold" />
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonOpenMaps"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="Comment y aller"
+                        app:icon="@drawable/ic_directions_outline"
+                        app:iconPadding="6dp" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
