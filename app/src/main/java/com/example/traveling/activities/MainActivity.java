@@ -11,6 +11,7 @@ import com.example.traveling.fragments.travelshare.FeedFragment;
 import com.example.traveling.fragments.travelshare.ProfileFragment;
 import com.example.traveling.fragments.travelshare.SearchFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.example.traveling.fragments.travelshare.NewPostFragment;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -36,7 +37,10 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.nav_search) {
                 loadFragment(new SearchFragment());
                 return true;
-            } else if (itemId == R.id.nav_routes) {
+            } else if (itemId == R.id.nav_new_post) {
+                loadFragment(new NewPostFragment());
+                return true;
+            }   else if (itemId == R.id.nav_routes) {
                 loadFragment(new PreferencesFragment());
                 return true;
             } else if (itemId == R.id.nav_profile) {

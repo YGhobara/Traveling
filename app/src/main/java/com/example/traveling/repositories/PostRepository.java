@@ -127,4 +127,19 @@ public class PostRepository {
                 })
                 .addOnFailureListener(listener::onError);
     }
+
+    public void createPost(Post post, final OnPostActionListener listener) {
+        if (post == null) {
+            listener.onError(new IllegalArgumentException("Post cannot be null."));
+            return;
+        }
+
+        DocumentReference postRef = db.collection("posts").document();
+
+        post.setId(postRef.getId());
+
+        postRef.set(post)
+                .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
 }

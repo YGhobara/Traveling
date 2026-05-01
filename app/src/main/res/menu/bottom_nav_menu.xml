@@ -12,6 +12,11 @@
         android:title="Explorer" />
 
     <item
+        android:id="@+id/nav_new_post"
+        android:icon="@drawable/ic_add_circle_outline"
+        android:title="Publier" />
+
+    <item
         android:id="@+id/nav_routes"
         android:icon="@drawable/ic_map_outline"
         android:title="Trajets" />
@@ -19,6 +24,6 @@
     <item
         android:id="@+id/nav_profile"
         android:icon="@drawable/ic_person_outline"
-        android:title="Profile" />
+        android:title="Profil" />
 
 </menu>
