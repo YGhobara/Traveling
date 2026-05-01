@@ -113,7 +113,7 @@ public class PhotoDetailFragment extends Fragment {
         textAuthor.setText(authorName);
         textLocation.setText(locationName);
         textCaption.setText(caption);
-        textLikes.setText(likeCount + " likes");
+        textLikes.setText(likeCount + " J'aime");
 
         loadImage(imageUrl);
     }
@@ -145,7 +145,7 @@ public class PhotoDetailFragment extends Fragment {
         textAuthor.setText(post.getAuthorName());
         textLocation.setText(post.getLocationName());
         textCaption.setText(post.getCaption());
-        textLikes.setText(post.getLikeCount() + " likes");
+        textLikes.setText(post.getLikeCount() + " J'aime");
 
         loadImage(post.getImageUrl());
         updateLikeIcon(post);
