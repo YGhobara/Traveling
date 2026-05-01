@@ -10,6 +10,7 @@ public class Post {
     private String caption;
     private String imageUrl;
     private String locationName;
+    private String placeType;
     private long createdAt;
     private int likeCount;
     private int commentCount;
@@ -20,7 +21,7 @@ public class Post {
     }
 
     public Post(String id, String userId, String authorName, String caption,
-                String imageUrl, String locationName, long createdAt,
+                String imageUrl, String locationName, String placeType, long createdAt,
                 int likeCount, int commentCount,boolean publicPost) {
         this.id = id;
         this.userId = userId;
@@ -28,6 +29,7 @@ public class Post {
         this.caption = caption;
         this.imageUrl = imageUrl;
         this.locationName = locationName;
+        this.placeType = placeType;
         this.createdAt = createdAt;
         this.likeCount = likeCount;
         this.commentCount = commentCount;
@@ -120,5 +122,13 @@ public class Post {
 
     public void setPublicPost(boolean publicPost) {
         this.publicPost = publicPost;
+    }
+
+    public String getPlaceType() {
+        return placeType;
+    }
+
+    public void setPlaceType(String placeType) {
+        this.placeType = placeType;
     }
 }

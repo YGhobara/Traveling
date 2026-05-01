@@ -24,12 +24,15 @@ import com.google.firebase.auth.FirebaseUser;
 
 import android.net.Uri;
 import android.widget.ImageView;
+import android.widget.ArrayAdapter;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.cloudinary.android.MediaManager;
 import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
+
 
 import java.util.Map;
 import java.util.ArrayList;
@@ -52,6 +55,7 @@ public class NewPostFragment extends Fragment {
 
     private ActivityResultLauncher<String> imagePickerLauncher;
     private static final String CLOUDINARY_UPLOAD_PRESET = "traveling_unsigned";
+    private MaterialAutoCompleteTextView dropdownPlaceType;
 
     public NewPostFragment() {
         // Required empty public constructor
@@ -92,6 +96,8 @@ public class NewPostFragment extends Fragment {
         buttonPublish = view.findViewById(R.id.buttonPublish);
         imagePreview = view.findViewById(R.id.imagePreview);
         buttonChooseImage = view.findViewById(R.id.buttonChooseImage);
+        dropdownPlaceType = view.findViewById(R.id.dropdownPlaceType);
+        setupPlaceTypeDropdown();
 
         postRepository = new PostRepository();
         userRepository = new UserRepository();
@@ -101,6 +107,32 @@ public class NewPostFragment extends Fragment {
         buttonChooseImage.setOnClickListener(v ->
                 imagePickerLauncher.launch("image/*")
         );
+    }
+
+    private void setupPlaceTypeDropdown() {
+        String[] placeTypes = {
+                "Nature",
+                "Musée",
+                "Monument",
+                "Rue",
+                "Restaurant",
+                "Magasin",
+                "Plage",
+                "Montagne",
+                "Ville",
+                "Autre"
+        };
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_list_item_1,
+                placeTypes
+        );
+
+        dropdownPlaceType.setAdapter(adapter);
+        dropdownPlaceType.setText(placeTypes[0], false);
+
+        dropdownPlaceType.setOnClickListener(v -> dropdownPlaceType.showDropDown());
     }
 
     private void publishPost() {
@@ -115,6 +147,9 @@ public class NewPostFragment extends Fragment {
 
         String caption = getText(editCaption);
         String location = getText(editLocation);
+        String placeType = dropdownPlaceType.getText() != null
+                ? dropdownPlaceType.getText().toString().trim()
+                : "";
         String imageUrl = getText(editImageUrl);
         boolean publicPost = switchPublic.isChecked();
 
@@ -149,6 +184,7 @@ public class NewPostFragment extends Fragment {
                         authorName,
                         caption,
                         location,
+                        placeType,
                         imageUrl,
                         publicPost
                 );
@@ -162,6 +198,7 @@ public class NewPostFragment extends Fragment {
                         fallbackName,
                         caption,
                         location,
+                        placeType,
                         imageUrl,
                         publicPost
                 );
@@ -173,10 +210,11 @@ public class NewPostFragment extends Fragment {
                                                   String authorName,
                                                   String caption,
                                                   String location,
+                                                  String placeType,
                                                   String fallbackImageUrl,
                                                   boolean publicPost) {
         if (selectedImageUri == null) {
-            createPost(userId, authorName, caption, location, fallbackImageUrl, publicPost);
+            createPost(userId, authorName, caption, location, placeType, fallbackImageUrl, publicPost);
             return;
         }
 
@@ -214,7 +252,7 @@ public class NewPostFragment extends Fragment {
 
                         String uploadedImageUrl = secureUrlObject.toString();
 
-                        createPost(userId, authorName, caption, location, uploadedImageUrl, publicPost);
+                        createPost(userId, authorName, caption, location, placeType, uploadedImageUrl, publicPost);
                     }
 
                     @Override
@@ -241,6 +279,7 @@ public class NewPostFragment extends Fragment {
                             String authorName,
                             String caption,
                             String location,
+                            String placeType,
                             String imageUrl,
                             boolean publicPost) {
         buttonPublish.setText("Publication...");
@@ -251,6 +290,7 @@ public class NewPostFragment extends Fragment {
                 caption,
                 imageUrl,
                 location,
+                placeType,
                 System.currentTimeMillis(),
                 0,
                 0,
