@@ -38,6 +38,7 @@ public class PhotoDetailFragment extends Fragment {
     private ImageView imagePost;
     private TextView textAuthor;
     private TextView textLocation;
+    private TextView textPlaceType;
     private TextView textCaption;
     private TextView textLikes;
     private ImageButton buttonLike;
@@ -71,6 +72,7 @@ public class PhotoDetailFragment extends Fragment {
         imagePost = view.findViewById(R.id.imageDetailPost);
         textAuthor = view.findViewById(R.id.textDetailAuthorName);
         textLocation = view.findViewById(R.id.textDetailLocationName);
+        textPlaceType = view.findViewById(R.id.textDetailPlaceType);
         textCaption = view.findViewById(R.id.textDetailCaption);
         textLikes = view.findViewById(R.id.textDetailLikeCount);
         buttonLike = view.findViewById(R.id.buttonDetailLike);
@@ -112,12 +114,14 @@ public class PhotoDetailFragment extends Fragment {
     private void displayInitialData(Bundle args) {
         String authorName = args.getString("authorName", "");
         String locationName = args.getString("locationName", "");
+        String placeType = args.getString("placeType", "");
         String caption = args.getString("caption", "");
         String imageUrl = args.getString("imageUrl", "");
         int likeCount = args.getInt("likeCount", 0);
 
         textAuthor.setText(authorName);
         textLocation.setText(locationName);
+        displayPlaceType(placeType);
         textCaption.setText(caption);
         textLikes.setText(likeCount + " J'aime");
 
@@ -150,11 +154,21 @@ public class PhotoDetailFragment extends Fragment {
     private void displayPost(Post post) {
         textAuthor.setText(post.getAuthorName());
         textLocation.setText(post.getLocationName());
+        displayPlaceType(post.getPlaceType());
         textCaption.setText(post.getCaption());
         textLikes.setText(post.getLikeCount() + " J'aime");
 
         loadImage(post.getImageUrl());
         updateLikeIcon(post);
+    }
+
+    private void displayPlaceType(String placeType) {
+        if (!TextUtils.isEmpty(placeType)) {
+            textPlaceType.setText(placeType);
+            textPlaceType.setVisibility(View.VISIBLE);
+        } else {
+            textPlaceType.setVisibility(View.GONE);
+        }
     }
 
     private void loadImage(String imageUrl) {
