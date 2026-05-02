@@ -173,12 +173,22 @@ public class PostRepository {
     public void getPublicPostsPage(@Nullable DocumentSnapshot lastVisibleDocument,
                                    int limit,
                                    @Nullable String placeType,
+                                   @Nullable Long startDate,
+                                   @Nullable Long endDate,
                                    final OnPaginatedPostsLoadedListener listener) {
         Query query = db.collection("posts")
                 .whereEqualTo("publicPost", true);
 
         if (placeType != null && !placeType.trim().isEmpty() && !"Tous".equals(placeType)) {
             query = query.whereEqualTo("placeType", placeType);
+        }
+
+        if (startDate != null) {
+            query = query.whereGreaterThanOrEqualTo("createdAt", startDate);
+        }
+
+        if (endDate != null) {
+            query = query.whereLessThanOrEqualTo("createdAt", endDate);
         }
 
         query = query.orderBy("createdAt", Query.Direction.DESCENDING)

@@ -9,6 +9,8 @@ import android.widget.Toast;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.app.DatePickerDialog;
+import android.widget.ImageButton;
 
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
@@ -27,9 +29,9 @@ import com.example.traveling.adapters.PostGridAdapter;
 import com.example.traveling.models.Post;
 import com.example.traveling.repositories.PostRepository;
 
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Calendar;
 
 public class SearchFragment extends Fragment {
 
@@ -56,6 +58,12 @@ public class SearchFragment extends Fragment {
     private String currentSearchQuery = "";
     private String selectedPlaceType = "Tous";
 
+    private ImageButton buttonFilters;
+
+    private Long selectedStartDate = null;
+    private Long selectedEndDate = null;
+    private String selectedPeriodLabel = "Toutes périodes";
+
     public SearchFragment() {
         // Required empty public constructor
     }
@@ -74,6 +82,7 @@ public class SearchFragment extends Fragment {
         setupTabs();
         setupSearchInput();
         setupPlaceTypeChips();
+        setupFilterButton();
         loadFirstPage();
 
         return view;
@@ -86,6 +95,152 @@ public class SearchFragment extends Fragment {
         tabMap = view.findViewById(R.id.tabMap);
         editTextSearch = view.findViewById(R.id.editTextSearch);
         chipGroupPlaceTypes = view.findViewById(R.id.chipGroupPlaceTypes);
+        buttonFilters = view.findViewById(R.id.buttonFilters);
+    }
+
+    private void setupFilterButton() {
+        buttonFilters.setOnClickListener(v -> showPeriodFilterDialog());
+    }
+
+    private void showPeriodFilterDialog() {
+        String[] options = {
+                "Toutes périodes",
+                "Aujourd’hui",
+                "Cette semaine",
+                "Ce mois-ci",
+                "Plage personnalisée"
+        };
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Filtrer par période")
+                .setSingleChoiceItems(options, getSelectedPeriodIndex(), (dialog, which) -> {
+                    if (which == 0) {
+                        selectedPeriodLabel = "Toutes périodes";
+                        selectedStartDate = null;
+                        selectedEndDate = null;
+                        dialog.dismiss();
+                        loadFirstPage();
+                    } else if (which == 1) {
+                        selectedPeriodLabel = "Aujourd’hui";
+                        setTodayRange();
+                        dialog.dismiss();
+                        loadFirstPage();
+                    } else if (which == 2) {
+                        selectedPeriodLabel = "Cette semaine";
+                        setThisWeekRange();
+                        dialog.dismiss();
+                        loadFirstPage();
+                    } else if (which == 3) {
+                        selectedPeriodLabel = "Ce mois-ci";
+                        setThisMonthRange();
+                        dialog.dismiss();
+                        loadFirstPage();
+                    } else {
+                        dialog.dismiss();
+                        showCustomStartDatePicker();
+                    }
+                })
+                .setNegativeButton("Annuler", null)
+                .show();
+    }
+
+    private int getSelectedPeriodIndex() {
+        if ("Aujourd’hui".equals(selectedPeriodLabel)) return 1;
+        if ("Cette semaine".equals(selectedPeriodLabel)) return 2;
+        if ("Ce mois-ci".equals(selectedPeriodLabel)) return 3;
+        if ("Plage personnalisée".equals(selectedPeriodLabel)) return 4;
+        return 0;
+    }
+
+    private void setTodayRange() {
+        Calendar start = Calendar.getInstance();
+        start.set(Calendar.HOUR_OF_DAY, 0);
+        start.set(Calendar.MINUTE, 0);
+        start.set(Calendar.SECOND, 0);
+        start.set(Calendar.MILLISECOND, 0);
+
+        Calendar end = Calendar.getInstance();
+        end.set(Calendar.HOUR_OF_DAY, 23);
+        end.set(Calendar.MINUTE, 59);
+        end.set(Calendar.SECOND, 59);
+        end.set(Calendar.MILLISECOND, 999);
+
+        selectedStartDate = start.getTimeInMillis();
+        selectedEndDate = end.getTimeInMillis();
+    }
+
+    private void setThisWeekRange() {
+        Calendar start = Calendar.getInstance();
+        start.set(Calendar.DAY_OF_WEEK, start.getFirstDayOfWeek());
+        start.set(Calendar.HOUR_OF_DAY, 0);
+        start.set(Calendar.MINUTE, 0);
+        start.set(Calendar.SECOND, 0);
+        start.set(Calendar.MILLISECOND, 0);
+
+        Calendar end = Calendar.getInstance();
+        end.set(Calendar.HOUR_OF_DAY, 23);
+        end.set(Calendar.MINUTE, 59);
+        end.set(Calendar.SECOND, 59);
+        end.set(Calendar.MILLISECOND, 999);
+
+        selectedStartDate = start.getTimeInMillis();
+        selectedEndDate = end.getTimeInMillis();
+    }
+
+    private void setThisMonthRange() {
+        Calendar start = Calendar.getInstance();
+        start.set(Calendar.DAY_OF_MONTH, 1);
+        start.set(Calendar.HOUR_OF_DAY, 0);
+        start.set(Calendar.MINUTE, 0);
+        start.set(Calendar.SECOND, 0);
+        start.set(Calendar.MILLISECOND, 0);
+
+        Calendar end = Calendar.getInstance();
+        end.set(Calendar.HOUR_OF_DAY, 23);
+        end.set(Calendar.MINUTE, 59);
+        end.set(Calendar.SECOND, 59);
+        end.set(Calendar.MILLISECOND, 999);
+
+        selectedStartDate = start.getTimeInMillis();
+        selectedEndDate = end.getTimeInMillis();
+    }
+
+    private void showCustomStartDatePicker() {
+        Calendar now = Calendar.getInstance();
+
+        new DatePickerDialog(requireContext(),
+                (view, year, month, dayOfMonth) -> {
+                    Calendar start = Calendar.getInstance();
+                    start.set(year, month, dayOfMonth, 0, 0, 0);
+                    start.set(Calendar.MILLISECOND, 0);
+
+                    selectedStartDate = start.getTimeInMillis();
+                    showCustomEndDatePicker();
+                },
+                now.get(Calendar.YEAR),
+                now.get(Calendar.MONTH),
+                now.get(Calendar.DAY_OF_MONTH))
+                .show();
+    }
+
+    private void showCustomEndDatePicker() {
+        Calendar now = Calendar.getInstance();
+
+        new DatePickerDialog(requireContext(),
+                (view, year, month, dayOfMonth) -> {
+                    Calendar end = Calendar.getInstance();
+                    end.set(year, month, dayOfMonth, 23, 59, 59);
+                    end.set(Calendar.MILLISECOND, 999);
+
+                    selectedEndDate = end.getTimeInMillis();
+                    selectedPeriodLabel = "Plage personnalisée";
+
+                    loadFirstPage();
+                },
+                now.get(Calendar.YEAR),
+                now.get(Calendar.MONTH),
+                now.get(Calendar.DAY_OF_MONTH))
+                .show();
     }
 
     private void setupRecycler() {
@@ -256,7 +411,12 @@ public class SearchFragment extends Fragment {
             textSearchStatus.setText(allPosts.size() + " publication(s) chargée(s)...");
         }
 
-        postRepository.getPublicPostsPage(lastVisibleDocument, PAGE_SIZE, selectedPlaceType,
+        postRepository.getPublicPostsPage(
+                lastVisibleDocument,
+                PAGE_SIZE,
+                selectedPlaceType,
+                selectedStartDate,
+                selectedEndDate,
                 new PostRepository.OnPaginatedPostsLoadedListener() {
                     @Override
                     public void onSuccess(List<Post> posts, DocumentSnapshot newLastVisibleDocument) {
