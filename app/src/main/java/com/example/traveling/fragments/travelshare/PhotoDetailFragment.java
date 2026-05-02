@@ -44,8 +44,10 @@ public class PhotoDetailFragment extends Fragment {
     private ImageView imagePost;
     private TextView textAuthor;
     private TextView textLocation;
+    private TextView textPostDate;
     private TextView textPlaceType;
     private TextView textCaption;
+    private TextView textCommentsTitle;
     private TextView textLikes;
     private ImageButton buttonLike;
     private ImageButton buttonBack;
@@ -81,9 +83,11 @@ public class PhotoDetailFragment extends Fragment {
         imagePost = view.findViewById(R.id.imageDetailPost);
         textAuthor = view.findViewById(R.id.textDetailAuthorName);
         textLocation = view.findViewById(R.id.textDetailLocationName);
+        textPostDate = view.findViewById(R.id.textDetailPostDate);
         textPlaceType = view.findViewById(R.id.textDetailPlaceType);
         textCaption = view.findViewById(R.id.textDetailCaption);
         textLikes = view.findViewById(R.id.textDetailLikeCount);
+        textCommentsTitle = view.findViewById(R.id.textCommentsTitle);
         buttonLike = view.findViewById(R.id.buttonDetailLike);
         buttonBack = view.findViewById(R.id.buttonBack);
         buttonReport = view.findViewById(R.id.buttonReport);
@@ -131,9 +135,11 @@ public class PhotoDetailFragment extends Fragment {
         String caption = args.getString("caption", "");
         String imageUrl = args.getString("imageUrl", "");
         int likeCount = args.getInt("likeCount", 0);
+        long createdAt = args.getLong("createdAt", 0);
 
         textAuthor.setText(authorName);
         textLocation.setText(locationName);
+        textPostDate.setText(formatRelativeTime(createdAt));
         displayPlaceType(placeType);
         textCaption.setText(caption);
         textLikes.setText(likeCount + " J'aime");
@@ -167,9 +173,11 @@ public class PhotoDetailFragment extends Fragment {
     private void displayPost(Post post) {
         textAuthor.setText(post.getAuthorName());
         textLocation.setText(post.getLocationName());
+        textPostDate.setText(formatRelativeTime(post.getCreatedAt()));
         displayPlaceType(post.getPlaceType());
         textCaption.setText(post.getCaption());
         textLikes.setText(post.getLikeCount() + " J'aime");
+        textCommentsTitle.setText("Commentaires (" + post.getCommentCount() + ")");
 
         loadImage(post.getImageUrl());
         updateLikeIcon(post);
@@ -485,6 +493,47 @@ public class PhotoDetailFragment extends Fragment {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW,
                     Uri.parse("https://www.google.com/maps/search/?api=1&query=" + Uri.encode(locationName)));
             startActivity(browserIntent);
+        }
+    }
+
+    private String formatRelativeTime(long timestamp) {
+        if (timestamp <= 0) {
+            return "Date inconnue";
+        }
+
+        long now = System.currentTimeMillis();
+        long diff = now - timestamp;
+
+        long minute = 60 * 1000;
+        long hour = 60 * minute;
+        long day = 24 * hour;
+        long month = 30 * day;
+        long year = 365 * day;
+
+        if (diff < minute) {
+            return "Publié à l’instant";
+        } else if (diff < hour) {
+            long minutes = diff / minute;
+            return "Publié il y a " + minutes + " min";
+        } else if (diff < day) {
+            long hours = diff / hour;
+            return "Publié il y a " + hours + " h";
+        } else if (diff < month) {
+            long days = diff / day;
+            return "Publié il y a " + days + " j";
+        } else if (diff < year) {
+            long months = diff / month;
+            return "Publié il y a " + months + " mois";
+        } else {
+            long years = diff / year;
+            long remainingMonths = (diff % year) / month;
+
+            if (remainingMonths == 0) {
+                return "Publié il y a " + years + " an" + (years > 1 ? "s" : "");
+            }
+
+            return "Publié il y a " + years + " an" + (years > 1 ? "s" : "")
+                    + " et " + remainingMonths + " mois";
         }
     }
 }

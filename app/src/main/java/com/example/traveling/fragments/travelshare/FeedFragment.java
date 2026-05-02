@@ -106,6 +106,7 @@ public class FeedFragment extends Fragment {
         args.putString("caption", post.getCaption());
         args.putString("imageUrl", post.getImageUrl());
         args.putInt("likeCount", post.getLikeCount());
+        args.putLong("createdAt", post.getCreatedAt());
         fragment.setArguments(args);
 
         ((com.example.traveling.activities.MainActivity) requireActivity())
