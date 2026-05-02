@@ -10,6 +10,9 @@ public class Post {
     private String caption;
     private String imageUrl;
     private String locationName;
+    private double latitude;
+    private double longitude;
+    private String photonPlaceId;
     private String placeType;
     private long createdAt;
     private int likeCount;
@@ -21,14 +24,18 @@ public class Post {
     }
 
     public Post(String id, String userId, String authorName, String caption,
-                String imageUrl, String locationName, String placeType, long createdAt,
-                int likeCount, int commentCount,boolean publicPost) {
+                 String imageUrl, String locationName, double latitude, double longitude,
+                 String photonPlaceId, String placeType, long createdAt,
+                 int likeCount, int commentCount, boolean publicPost) {
         this.id = id;
         this.userId = userId;
         this.authorName = authorName;
         this.caption = caption;
         this.imageUrl = imageUrl;
         this.locationName = locationName;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.photonPlaceId = photonPlaceId;
         this.placeType = placeType;
         this.createdAt = createdAt;
         this.likeCount = likeCount;
@@ -82,6 +89,30 @@ public class Post {
 
     public void setLocationName(String locationName) {
         this.locationName = locationName;
+    }
+
+    public double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(double latitude) {
+        this.latitude = latitude;
+    }
+
+    public double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
+    }
+
+    public String getPhotonPlaceId() {
+        return photonPlaceId;
+    }
+
+    public void setPhotonPlaceId(String photonPlaceId) {
+        this.photonPlaceId = photonPlaceId;
     }
 
     public long getCreatedAt() {

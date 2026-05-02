@@ -6,6 +6,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,8 +18,11 @@ import androidx.fragment.app.Fragment;
 import com.example.traveling.R;
 import com.example.traveling.models.Post;
 import com.example.traveling.models.UserProfile;
+import com.example.traveling.models.LocationSuggestion;
+import com.example.traveling.repositories.PhotonRepository;
 import com.example.traveling.repositories.PostRepository;
 import com.example.traveling.repositories.UserRepository;
+
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
@@ -33,20 +40,27 @@ import com.cloudinary.android.MediaManager;
 import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
 
-
+import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 
 public class NewPostFragment extends Fragment {
 
     private TextInputEditText editCaption;
-    private TextInputEditText editLocation;
+    private MaterialAutoCompleteTextView dropdownLocation;
     private TextInputEditText editImageUrl;
     private SwitchMaterial switchPublic;
     private MaterialButton buttonPublish;
 
     private PostRepository postRepository;
     private UserRepository userRepository;
+    private PhotonRepository photonRepository;
+    private ArrayAdapter<LocationSuggestion> locationAdapter;
+    private LocationSuggestion selectedLocationSuggestion;
+
+    private final Handler locationSearchHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingLocationSearch;
+    private boolean isSettingLocationFromSuggestion = false;
     private FirebaseAuth auth;
 
     private ImageView imagePreview;
@@ -90,17 +104,20 @@ public class NewPostFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         editCaption = view.findViewById(R.id.editCaption);
-        editLocation = view.findViewById(R.id.editLocation);
+        dropdownLocation = view.findViewById(R.id.dropdownLocation);
         editImageUrl = view.findViewById(R.id.editImageUrl);
         switchPublic = view.findViewById(R.id.switchPublic);
         buttonPublish = view.findViewById(R.id.buttonPublish);
         imagePreview = view.findViewById(R.id.imagePreview);
         buttonChooseImage = view.findViewById(R.id.buttonChooseImage);
         dropdownPlaceType = view.findViewById(R.id.dropdownPlaceType);
-        setupPlaceTypeDropdown();
 
         postRepository = new PostRepository();
         userRepository = new UserRepository();
+        photonRepository = new PhotonRepository();
+
+        setupPlaceTypeDropdown();
+        setupLocationAutocomplete();
         auth = FirebaseAuth.getInstance();
 
         buttonPublish.setOnClickListener(v -> publishPost());
@@ -135,6 +152,92 @@ public class NewPostFragment extends Fragment {
         dropdownPlaceType.setOnClickListener(v -> dropdownPlaceType.showDropDown());
     }
 
+    private void setupLocationAutocomplete() {
+        locationAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                new ArrayList<>()
+        );
+
+        dropdownLocation.setAdapter(locationAdapter);
+        dropdownLocation.setThreshold(3);
+
+        dropdownLocation.setOnItemClickListener((parent, view, position, id) -> {
+            LocationSuggestion suggestion = locationAdapter.getItem(position);
+
+            if (suggestion != null) {
+                selectedLocationSuggestion = suggestion;
+
+                isSettingLocationFromSuggestion = true;
+                dropdownLocation.setText(suggestion.getDisplayName(), false);
+                dropdownLocation.dismissDropDown();
+                isSettingLocationFromSuggestion = false;
+
+                dropdownLocation.setError(null);
+            }
+        });
+
+        dropdownLocation.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (isSettingLocationFromSuggestion) {
+                    return;
+                }
+
+                selectedLocationSuggestion = null;
+
+                String query = s == null ? "" : s.toString().trim();
+
+                if (pendingLocationSearch != null) {
+                    locationSearchHandler.removeCallbacks(pendingLocationSearch);
+                }
+
+                if (query.length() < 3) {
+                    locationAdapter.clear();
+                    locationAdapter.notifyDataSetChanged();
+                    return;
+                }
+
+                pendingLocationSearch = () -> searchLocationSuggestions(query);
+                locationSearchHandler.postDelayed(pendingLocationSearch, 500);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+    }
+
+    private void searchLocationSuggestions(String query) {
+        photonRepository.searchLocations(query, new PhotonRepository.OnLocationSuggestionsLoadedListener() {
+            @Override
+            public void onSuccess(List<LocationSuggestion> suggestions) {
+                if (!isAdded()) return;
+
+                locationAdapter.clear();
+                locationAdapter.addAll(suggestions);
+                locationAdapter.notifyDataSetChanged();
+
+                if (!suggestions.isEmpty()) {
+                    dropdownLocation.showDropDown();
+                }
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                // Keep quiet to avoid annoying the user while typing.
+                locationAdapter.clear();
+                locationAdapter.notifyDataSetChanged();
+            }
+        });
+    }
+
     private void publishPost() {
         FirebaseUser currentUser = auth.getCurrentUser();
 
@@ -146,7 +249,10 @@ public class NewPostFragment extends Fragment {
         }
 
         String caption = getText(editCaption);
-        String location = getText(editLocation);
+        String location = dropdownLocation.getText() == null
+                ? ""
+                : dropdownLocation.getText().toString().trim();
+
         String placeType = dropdownPlaceType.getText() != null
                 ? dropdownPlaceType.getText().toString().trim()
                 : "";
@@ -159,7 +265,12 @@ public class NewPostFragment extends Fragment {
         }
 
         if (TextUtils.isEmpty(location)) {
-            editLocation.setError("Ajoutez un lieu.");
+            dropdownLocation.setError("Ajoutez un lieu.");
+            return;
+        }
+
+        if (selectedLocationSuggestion == null) {
+            dropdownLocation.setError("Sélectionnez un lieu dans les suggestions.");
             return;
         }
 
@@ -184,6 +295,9 @@ public class NewPostFragment extends Fragment {
                         authorName,
                         caption,
                         location,
+                        selectedLocationSuggestion.getLatitude(),
+                        selectedLocationSuggestion.getLongitude(),
+                        selectedLocationSuggestion.getPhotonPlaceId(),
                         placeType,
                         imageUrl,
                         publicPost
@@ -198,6 +312,9 @@ public class NewPostFragment extends Fragment {
                         fallbackName,
                         caption,
                         location,
+                        selectedLocationSuggestion.getLatitude(),
+                        selectedLocationSuggestion.getLongitude(),
+                        selectedLocationSuggestion.getPhotonPlaceId(),
                         placeType,
                         imageUrl,
                         publicPost
@@ -210,11 +327,14 @@ public class NewPostFragment extends Fragment {
                                                   String authorName,
                                                   String caption,
                                                   String location,
+                                                  double latitude,
+                                                  double longitude,
+                                                  String photonPlaceId,
                                                   String placeType,
                                                   String fallbackImageUrl,
                                                   boolean publicPost) {
         if (selectedImageUri == null) {
-            createPost(userId, authorName, caption, location, placeType, fallbackImageUrl, publicPost);
+            createPost(userId, authorName, caption, location, latitude, longitude, photonPlaceId, placeType, fallbackImageUrl, publicPost);
             return;
         }
 
@@ -252,7 +372,7 @@ public class NewPostFragment extends Fragment {
 
                         String uploadedImageUrl = secureUrlObject.toString();
 
-                        createPost(userId, authorName, caption, location, placeType, uploadedImageUrl, publicPost);
+                        createPost(userId, authorName, caption, location, latitude, longitude, photonPlaceId, placeType, uploadedImageUrl, publicPost);
                     }
 
                     @Override
@@ -279,6 +399,9 @@ public class NewPostFragment extends Fragment {
                             String authorName,
                             String caption,
                             String location,
+                            double latitude,
+                            double longitude,
+                            String photonPlaceId,
                             String placeType,
                             String imageUrl,
                             boolean publicPost) {
@@ -290,6 +413,9 @@ public class NewPostFragment extends Fragment {
                 caption,
                 imageUrl,
                 location,
+                latitude,
+                longitude,
+                photonPlaceId,
                 placeType,
                 System.currentTimeMillis(),
                 0,
