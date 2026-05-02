@@ -4,6 +4,8 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -85,6 +87,32 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         } else {
             holder.imagePost.setImageResource(R.drawable.bg_post_placeholder);
         }
+
+        GestureDetector gestureDetector = new GestureDetector(
+                holder.itemView.getContext(),
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onSingleTapConfirmed(MotionEvent e) {
+                        if (postClickListener != null) {
+                            postClickListener.onPostClick(post);
+                        }
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onDoubleTap(MotionEvent e) {
+                        if (likeClickListener != null) {
+                            likeClickListener.onLikeClick(post);
+                        }
+                        return true;
+                    }
+                }
+        );
+
+        holder.imagePost.setOnTouchListener((v, event) -> {
+            gestureDetector.onTouchEvent(event);
+            return true;
+        });
 
         holder.buttonLike.setColorFilter(
                 likedByCurrentUser ? Color.parseColor("#E53935") : Color.parseColor("#6B7280")

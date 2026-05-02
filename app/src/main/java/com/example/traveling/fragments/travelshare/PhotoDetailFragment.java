@@ -6,6 +6,8 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -87,6 +89,20 @@ public class PhotoDetailFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_photo_detail, container, false);
 
         imagePost = view.findViewById(R.id.imageDetailPost);
+        GestureDetector gestureDetector = new GestureDetector(requireContext(),
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onDoubleTap(MotionEvent e) {
+                        toggleLike();
+                        return true;
+                    }
+                });
+
+        imagePost.setOnTouchListener((v, event) -> {
+            gestureDetector.onTouchEvent(event);
+            return true;
+        });
+
         textOverlayLocation = view.findViewById(R.id.textOverlayLocation);
         textOverlayPostDate = view.findViewById(R.id.textOverlayPostDate);
         textAuthor = view.findViewById(R.id.textDetailAuthorName);
