@@ -128,6 +128,17 @@ public class PostRepository {
                 .addOnFailureListener(listener::onError);
     }
 
+    public void getPostsByUser(String userId, OnPostsLoadedListener listener) {
+        db.collection("posts")
+                .whereEqualTo("userId", userId)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Post> posts = queryDocumentSnapshots.toObjects(Post.class);
+                    listener.onSuccess(posts);
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
     public void createPost(Post post, final OnPostActionListener listener) {
         if (post == null) {
             listener.onError(new IllegalArgumentException("Post cannot be null."));

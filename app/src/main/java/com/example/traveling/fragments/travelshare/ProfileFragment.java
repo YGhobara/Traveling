@@ -21,16 +21,28 @@ import com.example.traveling.repositories.UserRepository;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.example.traveling.models.Post;
+import com.example.traveling.repositories.PostRepository;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class ProfileFragment extends Fragment {
 
     private FirebaseAuth mAuth;
     private UserRepository userRepository;
+    private PostRepository postRepository;
 
     private TextView textAvatarInitials;
     private TextView textFullName;
     private TextView textUsername;
     private TextView textProfileSectionPlaceholder;
+
+    private View statTrips;
+    private View statFollowers;
+    private View statFollowing;
+
     private TextView tabPhotos;
     private TextView tabRoutes;
     private TextView tabGroups;
@@ -52,6 +64,7 @@ public class ProfileFragment extends Fragment {
 
         mAuth = FirebaseAuth.getInstance();
         userRepository = new UserRepository();
+        postRepository = new PostRepository();
 
         bindViews(view);
         setupStats(view);
@@ -73,6 +86,11 @@ public class ProfileFragment extends Fragment {
         textFullName = view.findViewById(R.id.textFullName);
         textUsername = view.findViewById(R.id.textUsername);
         textProfileSectionPlaceholder = view.findViewById(R.id.textProfileSectionPlaceholder);
+
+        statTrips = view.findViewById(R.id.statTrips);
+        statFollowers = view.findViewById(R.id.statFollowers);
+        statFollowing = view.findViewById(R.id.statFollowing);
+
         tabPhotos = view.findViewById(R.id.tabPhotos);
         tabRoutes = view.findViewById(R.id.tabRoutes);
         tabGroups = view.findViewById(R.id.tabGroups);
@@ -83,9 +101,9 @@ public class ProfileFragment extends Fragment {
     }
 
     private void setupStats(View view) {
-        setStat(view.findViewById(R.id.statTrips), "0", "Voyages");
-        setStat(view.findViewById(R.id.statFollowers), "0", "Abonnés");
-        setStat(view.findViewById(R.id.statFollowing), "0", "Abonnements");
+        setStat(statTrips, "0", "Voyages");
+        setStat(statFollowers, "0", "Abonnés");
+        setStat(statFollowing, "0", "Abonnements");
 
         setupTabs();
     }
@@ -94,6 +112,12 @@ public class ProfileFragment extends Fragment {
         setTab(tabPhotos, "Photos", 0, R.drawable.ic_bookmark_outline, true);
         setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
         setTab(tabGroups, "Groupes", 0, R.drawable.ic_person_outline, false);
+    }
+
+    private void updateTabCounts(int photosCount, int routesCount, int groupsCount) {
+        setTab(tabPhotos, "Photos", photosCount, R.drawable.ic_bookmark_outline, true);
+        setTab(tabRoutes, "Trajets", routesCount, R.drawable.ic_directions_outline, false);
+        setTab(tabGroups, "Groupes", groupsCount, R.drawable.ic_person_outline, false);
     }
 
     private void setTab(TextView tab, String label, int count, int iconRes, boolean selected) {
@@ -159,12 +183,14 @@ public class ProfileFragment extends Fragment {
             public void onSuccess(UserProfile userProfile) {
                 if (!isAdded()) return;
                 displayUserProfile(userProfile, currentUser);
+                loadProfileStats(currentUser.getUid());
             }
 
             @Override
             public void onError(Exception exception) {
                 if (!isAdded()) return;
                 displayFallbackProfile(currentUser);
+                loadProfileStats(currentUser.getUid());
 
                 Toast.makeText(requireContext(),
                         "Profil utilisateur incomplet.",
@@ -210,6 +236,49 @@ public class ProfileFragment extends Fragment {
         btnLogout.setVisibility(View.VISIBLE);
         buttonEditProfile.setVisibility(View.VISIBLE);
         buttonEditProfileLarge.setText("Modifier le profil");
+    }
+
+    private void loadProfileStats(String userId) {
+        postRepository.getPostsByUser(userId, new PostRepository.OnPostsLoadedListener() {
+            @Override
+            public void onSuccess(List<Post> posts) {
+                if (!isAdded()) return;
+
+                int photosCount = posts.size();
+                int voyagesCount = countDistinctLocations(posts);
+
+                setStat(statTrips, String.valueOf(voyagesCount), "Voyages");
+
+                // Temporary placeholders until follow system exists
+                setStat(statFollowers, "0", "Abonnés");
+                setStat(statFollowing, "0", "Abonnements");
+
+                updateTabCounts(photosCount, 0, 0);
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                Toast.makeText(requireContext(),
+                        "Impossible de charger les statistiques.",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private int countDistinctLocations(List<Post> posts) {
+        Set<String> locations = new HashSet<>();
+
+        for (Post post : posts) {
+            String location = safe(post.getLocationName()).toLowerCase();
+
+            if (!TextUtils.isEmpty(location)) {
+                locations.add(location);
+            }
+        }
+
+        return locations.size();
     }
 
     private String makeInitials(String firstName, String lastName, String username, String email) {
