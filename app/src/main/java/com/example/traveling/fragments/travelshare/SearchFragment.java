@@ -167,6 +167,16 @@ public class SearchFragment extends Fragment {
                 selectedPlaceType = "Rue";
             } else if (checkedId == R.id.chipRestaurant) {
                 selectedPlaceType = "Restaurant";
+            } else if (checkedId == R.id.chipShop) {
+                selectedPlaceType = "Magasin";
+            } else if (checkedId == R.id.chipBeach) {
+                selectedPlaceType = "Plage";
+            } else if (checkedId == R.id.chipMountain) {
+                selectedPlaceType = "Montagne";
+            } else if (checkedId == R.id.chipCity) {
+                selectedPlaceType = "Ville";
+            } else if (checkedId == R.id.chipOther) {
+                selectedPlaceType = "Autre";
             } else {
                 selectedPlaceType = "Tous";
             }
