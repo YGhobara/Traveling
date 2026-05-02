@@ -30,9 +30,10 @@ public class ProfileFragment extends Fragment {
     private TextView textAvatarInitials;
     private TextView textFullName;
     private TextView textUsername;
-    private TextView textEmail;
-
     private TextView textProfileSectionPlaceholder;
+    private TextView tabPhotos;
+    private TextView tabRoutes;
+    private TextView tabGroups;
 
     private MaterialButton buttonEditProfileLarge;
     private MaterialButton btnLogout;
@@ -71,8 +72,10 @@ public class ProfileFragment extends Fragment {
         textAvatarInitials = view.findViewById(R.id.textAvatarInitials);
         textFullName = view.findViewById(R.id.textFullName);
         textUsername = view.findViewById(R.id.textUsername);
-        textEmail = view.findViewById(R.id.textEmail);
         textProfileSectionPlaceholder = view.findViewById(R.id.textProfileSectionPlaceholder);
+        tabPhotos = view.findViewById(R.id.tabPhotos);
+        tabRoutes = view.findViewById(R.id.tabRoutes);
+        tabGroups = view.findViewById(R.id.tabGroups);
 
         buttonEditProfile = view.findViewById(R.id.buttonEditProfile);
         buttonEditProfileLarge = view.findViewById(R.id.buttonEditProfileLarge);
@@ -81,9 +84,28 @@ public class ProfileFragment extends Fragment {
 
     private void setupStats(View view) {
         setStat(view.findViewById(R.id.statTrips), "0", "Voyages");
-        setStat(view.findViewById(R.id.statPhotos), "0", "Photos");
-        setStat(view.findViewById(R.id.statRoutes), "0", "Trajets");
-        setStat(view.findViewById(R.id.statGroups), "0", "Groupes");
+        setStat(view.findViewById(R.id.statFollowers), "0", "Abonnés");
+        setStat(view.findViewById(R.id.statFollowing), "0", "Abonnements");
+
+        setupTabs();
+    }
+
+    private void setupTabs() {
+        setTab(tabPhotos, "Photos", 0, R.drawable.ic_bookmark_outline, true);
+        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
+        setTab(tabGroups, "Groupes", 0, R.drawable.ic_person_outline, false);
+    }
+
+    private void setTab(TextView tab, String label, int count, int iconRes, boolean selected) {
+        tab.setText(label + " (" + count + ")");
+        tab.setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0);
+        tab.setCompoundDrawablePadding(6);
+
+        tab.setTextColor(selected
+                ? getResources().getColor(R.color.travel_primary, null)
+                : android.graphics.Color.parseColor("#6B7280"));
+
+        tab.setTypeface(null, selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
     }
 
     private void setStat(View statView, String value, String label) {
@@ -116,7 +138,6 @@ public class ProfileFragment extends Fragment {
         textAvatarInitials.setText("?");
         textFullName.setText("Mode invité");
         textUsername.setText("Connectez-vous pour personnaliser votre profil");
-        textEmail.setText("");
 
         btnLogout.setVisibility(View.GONE);
         buttonEditProfile.setVisibility(View.GONE);
@@ -132,7 +153,6 @@ public class ProfileFragment extends Fragment {
     private void loadUserProfile(FirebaseUser currentUser) {
         textFullName.setText("Chargement...");
         textUsername.setText("");
-        textEmail.setText(currentUser.getEmail() != null ? currentUser.getEmail() : "");
 
         userRepository.getUserProfile(currentUser.getUid(), new UserRepository.OnUserProfileLoadedListener() {
             @Override
@@ -171,7 +191,6 @@ public class ProfileFragment extends Fragment {
 
         textFullName.setText(fullName);
         textUsername.setText(!TextUtils.isEmpty(username) ? "@" + username : "@voyageur");
-        textEmail.setText(email);
 
         textAvatarInitials.setText(makeInitials(firstName, lastName, username, email));
 
@@ -187,7 +206,6 @@ public class ProfileFragment extends Fragment {
         textAvatarInitials.setText(makeInitials("", "", "", email));
         textFullName.setText("Utilisateur");
         textUsername.setText("@profil");
-        textEmail.setText(email);
 
         btnLogout.setVisibility(View.VISIBLE);
         buttonEditProfile.setVisibility(View.VISIBLE);
