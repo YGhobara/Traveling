@@ -26,6 +26,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.example.traveling.R;
 import com.example.traveling.activities.MainActivity;
 import com.example.traveling.adapters.PostGridAdapter;
+import com.example.traveling.adapters.PostMapInfoWindow;
 import com.example.traveling.models.Post;
 import com.example.traveling.repositories.PostRepository;
 
@@ -454,9 +455,16 @@ public class SearchFragment extends Fragment {
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
             marker.setTitle(safe(post.getLocationName()));
             marker.setSnippet(safe(post.getCaption()));
+            marker.setInfoWindow(new PostMapInfoWindow(mapSearch, post, this::openPostDetail));
 
             marker.setOnMarkerClickListener((clickedMarker, mapView) -> {
-                openPostDetail(post);
+                if (clickedMarker.isInfoWindowShown()) {
+                    clickedMarker.closeInfoWindow();
+                } else {
+                    clickedMarker.showInfoWindow();
+                    mapView.getController().animateTo(clickedMarker.getPosition());
+                }
+
                 return true;
             });
 

@@ -57,6 +57,7 @@ public class NewPostFragment extends Fragment {
     private PhotonRepository photonRepository;
     private ArrayAdapter<LocationSuggestion> locationAdapter;
     private LocationSuggestion selectedLocationSuggestion;
+    private String latestLocationQuery = "";
 
     private final Handler locationSearchHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingLocationSearch;
@@ -191,6 +192,7 @@ public class NewPostFragment extends Fragment {
                 selectedLocationSuggestion = null;
 
                 String query = s == null ? "" : s.toString().trim();
+                latestLocationQuery = query;
 
                 if (pendingLocationSearch != null) {
                     locationSearchHandler.removeCallbacks(pendingLocationSearch);
@@ -214,16 +216,32 @@ public class NewPostFragment extends Fragment {
 
     private void searchLocationSuggestions(String query) {
         photonRepository.searchLocations(query, new PhotonRepository.OnLocationSuggestionsLoadedListener() {
+
             @Override
             public void onSuccess(List<LocationSuggestion> suggestions) {
                 if (!isAdded()) return;
 
-                locationAdapter.clear();
-                locationAdapter.addAll(suggestions);
-                locationAdapter.notifyDataSetChanged();
+                if (!query.equals(latestLocationQuery)) {
+                    return;
+                }
 
-                if (!suggestions.isEmpty()) {
-                    dropdownLocation.showDropDown();
+                locationAdapter = new ArrayAdapter<>(
+                        requireContext(),
+                        android.R.layout.simple_dropdown_item_1line,
+                        suggestions
+                );
+
+                dropdownLocation.setAdapter(locationAdapter);
+
+                if (!suggestions.isEmpty()
+                        && dropdownLocation.hasFocus()
+                        && dropdownLocation.getText() != null
+                        && dropdownLocation.getText().toString().trim().length() >= 3) {
+
+                    dropdownLocation.postDelayed(() -> {
+                        dropdownLocation.dismissDropDown();
+                        dropdownLocation.showDropDown();
+                    }, 100);
                 }
             }
 
