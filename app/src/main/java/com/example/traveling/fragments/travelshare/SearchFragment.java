@@ -29,6 +29,12 @@ import com.example.traveling.adapters.PostGridAdapter;
 import com.example.traveling.models.Post;
 import com.example.traveling.repositories.PostRepository;
 
+import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Calendar;
@@ -39,6 +45,8 @@ public class SearchFragment extends Fragment {
     private TextView textSearchStatus;
     private TextView tabPublications;
     private TextView tabMap;
+    private MapView mapSearch;
+    private boolean isMapSelected = false;
 
     private PostRepository postRepository;
     private PostGridAdapter postGridAdapter;
@@ -79,6 +87,7 @@ public class SearchFragment extends Fragment {
 
         bindViews(view);
         setupRecycler();
+        setupMap();
         setupTabs();
         setupSearchInput();
         setupPlaceTypeChips();
@@ -96,6 +105,18 @@ public class SearchFragment extends Fragment {
         editTextSearch = view.findViewById(R.id.editTextSearch);
         chipGroupPlaceTypes = view.findViewById(R.id.chipGroupPlaceTypes);
         buttonFilters = view.findViewById(R.id.buttonFilters);
+        mapSearch = view.findViewById(R.id.mapSearch);
+    }
+
+    private void setupMap() {
+        Configuration.getInstance().setUserAgentValue(requireContext().getPackageName());
+
+        mapSearch.setTileSource(TileSourceFactory.MAPNIK);
+        mapSearch.setMultiTouchControls(true);
+
+        GeoPoint defaultPoint = new GeoPoint(48.8566, 2.3522); // Paris default
+        mapSearch.getController().setZoom(5.5);
+        mapSearch.getController().setCenter(defaultPoint);
     }
 
     private void setupFilterButton() {
@@ -271,15 +292,8 @@ public class SearchFragment extends Fragment {
     }
 
     private void setupTabs() {
-        tabPublications.setOnClickListener(v -> {
-            selectPublicationsTab();
-        });
-
-        tabMap.setOnClickListener(v -> {
-            Toast.makeText(requireContext(),
-                    "Vue carte à venir.",
-                    Toast.LENGTH_SHORT).show();
-        });
+        tabPublications.setOnClickListener(v -> selectPublicationsTab());
+        tabMap.setOnClickListener(v -> selectMapTab());
 
         selectPublicationsTab();
     }
@@ -356,6 +370,10 @@ public class SearchFragment extends Fragment {
         } else {
             textSearchStatus.setText(visiblePosts.size() + " résultat(s)");
         }
+
+        if (isMapSelected) {
+            updateMapMarkers();
+        }
     }
 
     private boolean matchesSearch(Post post) {
@@ -379,6 +397,8 @@ public class SearchFragment extends Fragment {
     }
 
     private void selectPublicationsTab() {
+        isMapSelected = false;
+
         tabPublications.setTextColor(getResources().getColor(R.color.travel_primary, null));
         tabPublications.setTypeface(null, android.graphics.Typeface.BOLD);
 
@@ -386,6 +406,88 @@ public class SearchFragment extends Fragment {
         tabMap.setTypeface(null, android.graphics.Typeface.NORMAL);
 
         recyclerSearchPosts.setVisibility(View.VISIBLE);
+        mapSearch.setVisibility(View.GONE);
+
+        updatePublicationStatus();
+    }
+
+    private void updatePublicationStatus() {
+        if (visiblePosts.isEmpty()) {
+            textSearchStatus.setText("Aucun résultat trouvé.");
+        } else {
+            textSearchStatus.setText(visiblePosts.size() + " résultat(s)");
+        }
+    }
+
+    private void selectMapTab() {
+        isMapSelected = true;
+
+        tabMap.setTextColor(getResources().getColor(R.color.travel_primary, null));
+        tabMap.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        tabPublications.setTextColor(android.graphics.Color.parseColor("#6B7280"));
+        tabPublications.setTypeface(null, android.graphics.Typeface.NORMAL);
+
+        recyclerSearchPosts.setVisibility(View.GONE);
+        mapSearch.setVisibility(View.VISIBLE);
+
+        updateMapMarkers();
+    }
+
+    private void updateMapMarkers() {
+        if (mapSearch == null) return;
+
+        mapSearch.getOverlays().clear();
+
+        GeoPoint firstPoint = null;
+        int markerCount = 0;
+
+        for (Post post : visiblePosts) {
+            if (!hasValidCoordinates(post)) {
+                continue;
+            }
+
+            GeoPoint point = new GeoPoint(post.getLatitude(), post.getLongitude());
+
+            Marker marker = new Marker(mapSearch);
+            marker.setPosition(point);
+            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+            marker.setTitle(safe(post.getLocationName()));
+            marker.setSnippet(safe(post.getCaption()));
+
+            marker.setOnMarkerClickListener((clickedMarker, mapView) -> {
+                openPostDetail(post);
+                return true;
+            });
+
+            mapSearch.getOverlays().add(marker);
+
+            if (firstPoint == null) {
+                firstPoint = point;
+            }
+
+            markerCount++;
+        }
+
+        if (firstPoint != null) {
+            mapSearch.getController().animateTo(firstPoint);
+            mapSearch.getController().setZoom(markerCount == 1 ? 10.5 : 5.5);
+        }
+
+        mapSearch.invalidate();
+
+        if (isMapSelected) {
+            if (markerCount == 0) {
+                textSearchStatus.setText("Aucune publication avec coordonnées pour cette recherche.");
+            } else {
+                textSearchStatus.setText(markerCount + " point(s) sur la carte");
+            }
+        }
+    }
+
+    private boolean hasValidCoordinates(Post post) {
+        return post != null
+                && !(post.getLatitude() == 0.0 && post.getLongitude() == 0.0);
     }
 
     private void loadFirstPage() {
@@ -482,5 +584,21 @@ public class SearchFragment extends Fragment {
         if (requireActivity() instanceof MainActivity) {
             ((MainActivity) requireActivity()).openFragmentWithBackStack(fragment);
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mapSearch != null) {
+            mapSearch.onResume();
+        }
+    }
+
+    @Override
+    public void onPause() {
+        if (mapSearch != null) {
+            mapSearch.onPause();
+        }
+        super.onPause();
     }
 }
