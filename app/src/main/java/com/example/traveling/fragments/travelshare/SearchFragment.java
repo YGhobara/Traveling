@@ -151,7 +151,7 @@ public class SearchFragment extends Fragment {
         chipGroupPlaceTypes.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (checkedIds.isEmpty()) {
                 selectedPlaceType = "Tous";
-                applyLocalFilters();
+                loadFirstPage();
                 return;
             }
 
@@ -181,7 +181,7 @@ public class SearchFragment extends Fragment {
                 selectedPlaceType = "Tous";
             }
 
-            applyLocalFilters();
+            loadFirstPage();
         });
     }
 
@@ -189,7 +189,7 @@ public class SearchFragment extends Fragment {
         visiblePosts.clear();
 
         for (Post post : allPosts) {
-            if (matchesSearch(post) && matchesPlaceType(post)) {
+            if (matchesSearch(post)) {
                 visiblePosts.add(post);
             }
         }
@@ -217,14 +217,6 @@ public class SearchFragment extends Fragment {
                 || location.contains(currentSearchQuery)
                 || author.contains(currentSearchQuery)
                 || placeType.contains(currentSearchQuery);
-    }
-
-    private boolean matchesPlaceType(Post post) {
-        if ("Tous".equals(selectedPlaceType)) {
-            return true;
-        }
-
-        return selectedPlaceType.equalsIgnoreCase(safe(post.getPlaceType()));
     }
 
     private String safe(String value) {
@@ -264,7 +256,7 @@ public class SearchFragment extends Fragment {
             textSearchStatus.setText(allPosts.size() + " publication(s) chargée(s)...");
         }
 
-        postRepository.getPublicPostsPage(lastVisibleDocument, PAGE_SIZE,
+        postRepository.getPublicPostsPage(lastVisibleDocument, PAGE_SIZE, selectedPlaceType,
                 new PostRepository.OnPaginatedPostsLoadedListener() {
                     @Override
                     public void onSuccess(List<Post> posts, DocumentSnapshot newLastVisibleDocument) {

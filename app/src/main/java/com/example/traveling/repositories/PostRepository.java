@@ -172,10 +172,16 @@ public class PostRepository {
 
     public void getPublicPostsPage(@Nullable DocumentSnapshot lastVisibleDocument,
                                    int limit,
+                                   @Nullable String placeType,
                                    final OnPaginatedPostsLoadedListener listener) {
         Query query = db.collection("posts")
-                .whereEqualTo("publicPost", true)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .whereEqualTo("publicPost", true);
+
+        if (placeType != null && !placeType.trim().isEmpty() && !"Tous".equals(placeType)) {
+            query = query.whereEqualTo("placeType", placeType);
+        }
+
+        query = query.orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(limit);
 
         if (lastVisibleDocument != null) {
