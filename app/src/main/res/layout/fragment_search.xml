@@ -31,15 +31,18 @@
             app:cardCornerRadius="16dp"
             app:cardElevation="1dp">
 
-            <TextView
-                android:id="@+id/textSearchPlaceholder"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editTextSearch"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:gravity="center_vertical"
+                android:background="@android:color/transparent"
+                android:hint="Rechercher une destination, un lieu..."
+                android:inputType="text"
+                android:maxLines="1"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                android:text="Rechercher une destination, un lieu..."
-                android:textColor="#9CA3AF"
+                android:textColor="@color/travel_on_surface"
+                android:textColorHint="#9CA3AF"
                 android:textSize="14sp" />
 
         </com.google.android.material.card.MaterialCardView>
@@ -82,7 +85,61 @@
             android:gravity="center"
             android:text="Carte"
             android:textColor="#6B7280" />
+
     </LinearLayout>
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroupPlaceTypes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        app:singleSelection="true"
+        app:selectionRequired="true">
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipAll"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="Tous" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipNature"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nature" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipMuseum"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Musée" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipMonument"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Monument" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipStreet"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rue" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipRestaurant"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Restaurant" />
+
+    </com.google.android.material.chip.ChipGroup>
 
     <TextView
         android:id="@+id/textSearchStatus"

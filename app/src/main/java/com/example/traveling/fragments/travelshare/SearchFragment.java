@@ -6,6 +6,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+
+import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.textfield.TextInputEditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -43,6 +49,13 @@ public class SearchFragment extends Fragment {
     private boolean isLoading = false;
     private boolean hasMorePosts = true;
 
+    private TextInputEditText editTextSearch;
+    private ChipGroup chipGroupPlaceTypes;
+
+    private final List<Post> visiblePosts = new ArrayList<>();
+    private String currentSearchQuery = "";
+    private String selectedPlaceType = "Tous";
+
     public SearchFragment() {
         // Required empty public constructor
     }
@@ -59,6 +72,8 @@ public class SearchFragment extends Fragment {
         bindViews(view);
         setupRecycler();
         setupTabs();
+        setupSearchInput();
+        setupPlaceTypeChips();
         loadFirstPage();
 
         return view;
@@ -69,6 +84,8 @@ public class SearchFragment extends Fragment {
         textSearchStatus = view.findViewById(R.id.textSearchStatus);
         tabPublications = view.findViewById(R.id.tabPublications);
         tabMap = view.findViewById(R.id.tabMap);
+        editTextSearch = view.findViewById(R.id.editTextSearch);
+        chipGroupPlaceTypes = view.findViewById(R.id.chipGroupPlaceTypes);
     }
 
     private void setupRecycler() {
@@ -112,6 +129,98 @@ public class SearchFragment extends Fragment {
         selectPublicationsTab();
     }
 
+    private void setupSearchInput() {
+        editTextSearch.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                currentSearchQuery = s == null ? "" : s.toString().trim().toLowerCase();
+                applyLocalFilters();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+    }
+
+    private void setupPlaceTypeChips() {
+        chipGroupPlaceTypes.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.isEmpty()) {
+                selectedPlaceType = "Tous";
+                applyLocalFilters();
+                return;
+            }
+
+            int checkedId = checkedIds.get(0);
+
+            if (checkedId == R.id.chipNature) {
+                selectedPlaceType = "Nature";
+            } else if (checkedId == R.id.chipMuseum) {
+                selectedPlaceType = "Musée";
+            } else if (checkedId == R.id.chipMonument) {
+                selectedPlaceType = "Monument";
+            } else if (checkedId == R.id.chipStreet) {
+                selectedPlaceType = "Rue";
+            } else if (checkedId == R.id.chipRestaurant) {
+                selectedPlaceType = "Restaurant";
+            } else {
+                selectedPlaceType = "Tous";
+            }
+
+            applyLocalFilters();
+        });
+    }
+
+    private void applyLocalFilters() {
+        visiblePosts.clear();
+
+        for (Post post : allPosts) {
+            if (matchesSearch(post) && matchesPlaceType(post)) {
+                visiblePosts.add(post);
+            }
+        }
+
+        postGridAdapter.submitList(visiblePosts);
+
+        if (visiblePosts.isEmpty()) {
+            textSearchStatus.setText("Aucun résultat trouvé.");
+        } else {
+            textSearchStatus.setText(visiblePosts.size() + " résultat(s)");
+        }
+    }
+
+    private boolean matchesSearch(Post post) {
+        if (TextUtils.isEmpty(currentSearchQuery)) {
+            return true;
+        }
+
+        String caption = safe(post.getCaption()).toLowerCase();
+        String location = safe(post.getLocationName()).toLowerCase();
+        String author = safe(post.getAuthorName()).toLowerCase();
+        String placeType = safe(post.getPlaceType()).toLowerCase();
+
+        return caption.contains(currentSearchQuery)
+                || location.contains(currentSearchQuery)
+                || author.contains(currentSearchQuery)
+                || placeType.contains(currentSearchQuery);
+    }
+
+    private boolean matchesPlaceType(Post post) {
+        if ("Tous".equals(selectedPlaceType)) {
+            return true;
+        }
+
+        return selectedPlaceType.equalsIgnoreCase(safe(post.getPlaceType()));
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value.trim();
+    }
+
     private void selectPublicationsTab() {
         tabPublications.setTextColor(getResources().getColor(R.color.travel_primary, null));
         tabPublications.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -124,7 +233,9 @@ public class SearchFragment extends Fragment {
 
     private void loadFirstPage() {
         allPosts.clear();
-        postGridAdapter.submitList(allPosts);
+
+        visiblePosts.clear();
+        postGridAdapter.submitList(visiblePosts);
 
         lastVisibleDocument = null;
         hasMorePosts = true;
@@ -170,8 +281,7 @@ public class SearchFragment extends Fragment {
                             hasMorePosts = false;
                         }
 
-                        postGridAdapter.submitList(allPosts);
-                        textSearchStatus.setText(allPosts.size() + " publication(s) publique(s)");
+                        applyLocalFilters();
                     }
 
                     @Override
