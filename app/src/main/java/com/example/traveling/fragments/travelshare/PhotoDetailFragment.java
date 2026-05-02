@@ -49,10 +49,16 @@ public class PhotoDetailFragment extends Fragment {
     private TextView textCaption;
     private TextView textCommentsTitle;
     private TextView textLikes;
+    private TextView textOverlayLocation;
+    private TextView textOverlayPostDate;
     private ImageButton buttonLike;
     private ImageButton buttonBack;
     private MaterialButton buttonReport;
-    private MaterialButton buttonOpenMaps;
+    private ImageButton buttonOpenMaps;
+    private MaterialButton buttonDirectionsCar;
+    private MaterialButton buttonDirectionsWalk;
+    private MaterialButton buttonDirectionsTransit;
+
 
     private RecyclerView recyclerViewComments;
     private TextView textNoComments;
@@ -81,6 +87,8 @@ public class PhotoDetailFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_photo_detail, container, false);
 
         imagePost = view.findViewById(R.id.imageDetailPost);
+        textOverlayLocation = view.findViewById(R.id.textOverlayLocation);
+        textOverlayPostDate = view.findViewById(R.id.textOverlayPostDate);
         textAuthor = view.findViewById(R.id.textDetailAuthorName);
         textLocation = view.findViewById(R.id.textDetailLocationName);
         textPostDate = view.findViewById(R.id.textDetailPostDate);
@@ -92,6 +100,9 @@ public class PhotoDetailFragment extends Fragment {
         buttonBack = view.findViewById(R.id.buttonBack);
         buttonReport = view.findViewById(R.id.buttonReport);
         buttonOpenMaps = view.findViewById(R.id.buttonOpenMaps);
+        buttonDirectionsCar = view.findViewById(R.id.buttonDirectionsCar);
+        buttonDirectionsWalk = view.findViewById(R.id.buttonDirectionsWalk);
+        buttonDirectionsTransit = view.findViewById(R.id.buttonDirectionsTransit);
 
         recyclerViewComments = view.findViewById(R.id.recyclerViewComments);
         textNoComments = view.findViewById(R.id.textNoComments);
@@ -121,6 +132,9 @@ public class PhotoDetailFragment extends Fragment {
         );
         buttonReport.setOnClickListener(v -> handleReportClick());
         buttonOpenMaps.setOnClickListener(v -> openLocationInMaps());
+        buttonDirectionsCar.setOnClickListener(v -> openDirectionsInMaps("driving"));
+        buttonDirectionsWalk.setOnClickListener(v -> openDirectionsInMaps("walking"));
+        buttonDirectionsTransit.setOnClickListener(v -> openDirectionsInMaps("transit"));
 
         loadFreshPost();
         loadComments();
@@ -140,6 +154,8 @@ public class PhotoDetailFragment extends Fragment {
         textAuthor.setText(authorName);
         textLocation.setText(locationName);
         textPostDate.setText(formatRelativeTime(createdAt));
+        textOverlayLocation.setText(locationName);
+        textOverlayPostDate.setText(formatRelativeTime(createdAt));
         displayPlaceType(placeType);
         textCaption.setText(caption);
         textLikes.setText(likeCount + " J'aime");
@@ -174,6 +190,8 @@ public class PhotoDetailFragment extends Fragment {
         textAuthor.setText(post.getAuthorName());
         textLocation.setText(post.getLocationName());
         textPostDate.setText(formatRelativeTime(post.getCreatedAt()));
+        textOverlayLocation.setText(post.getLocationName());
+        textOverlayPostDate.setText(formatRelativeTime(post.getCreatedAt()));
         displayPlaceType(post.getPlaceType());
         textCaption.setText(post.getCaption());
         textLikes.setText(post.getLikeCount() + " J'aime");
@@ -493,6 +511,32 @@ public class PhotoDetailFragment extends Fragment {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW,
                     Uri.parse("https://www.google.com/maps/search/?api=1&query=" + Uri.encode(locationName)));
             startActivity(browserIntent);
+        }
+    }
+
+    private void openDirectionsInMaps(String travelMode) {
+        String locationName = textLocation.getText() != null
+                ? textLocation.getText().toString().trim()
+                : "";
+
+        if (TextUtils.isEmpty(locationName)) {
+            Toast.makeText(requireContext(),
+                    "Lieu non disponible.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Uri uri = Uri.parse("https://www.google.com/maps/dir/?api=1"
+                + "&destination=" + Uri.encode(locationName)
+                + "&travelmode=" + Uri.encode(travelMode));
+
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        intent.setPackage("com.google.android.apps.maps");
+
+        if (intent.resolveActivity(requireActivity().getPackageManager()) != null) {
+            startActivity(intent);
+        } else {
+            startActivity(new Intent(Intent.ACTION_VIEW, uri));
         }
     }
 
