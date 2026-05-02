@@ -1,6 +1,7 @@
 package com.example.traveling.repositories;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.example.traveling.models.Post;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -26,6 +27,11 @@ public class PostRepository {
 
     public interface OnPostsLoadedListener {
         void onSuccess(List<Post> posts);
+        void onError(Exception exception);
+    }
+
+    public interface OnPaginatedPostsLoadedListener {
+        void onSuccess(List<Post> posts, DocumentSnapshot lastVisibleDocument);
         void onError(Exception exception);
     }
 
@@ -133,7 +139,17 @@ public class PostRepository {
                 .whereEqualTo("userId", userId)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
-                    List<Post> posts = queryDocumentSnapshots.toObjects(Post.class);
+                    List<Post> posts = new ArrayList<>();
+
+                    for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+                        Post post = document.toObject(Post.class);
+
+                        if (post != null) {
+                            post.setId(document.getId());
+                            posts.add(post);
+                        }
+                    }
+
                     listener.onSuccess(posts);
                 })
                 .addOnFailureListener(listener::onError);
@@ -151,6 +167,43 @@ public class PostRepository {
 
         postRef.set(post)
                 .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
+
+    public void getPublicPostsPage(@Nullable DocumentSnapshot lastVisibleDocument,
+                                   int limit,
+                                   final OnPaginatedPostsLoadedListener listener) {
+        Query query = db.collection("posts")
+                .whereEqualTo("publicPost", true)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(limit);
+
+        if (lastVisibleDocument != null) {
+            query = query.startAfter(lastVisibleDocument);
+        }
+
+        query.get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Post> posts = new ArrayList<>();
+
+                    for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+                        Post post = document.toObject(Post.class);
+
+                        if (post != null) {
+                            post.setId(document.getId());
+                            posts.add(post);
+                        }
+                    }
+
+                    DocumentSnapshot newLastVisible = null;
+
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        List<DocumentSnapshot> documents = queryDocumentSnapshots.getDocuments();
+                        newLastVisible = documents.get(documents.size() - 1);
+                    }
+
+                    listener.onSuccess(posts, newLastVisible);
+                })
                 .addOnFailureListener(listener::onError);
     }
 }

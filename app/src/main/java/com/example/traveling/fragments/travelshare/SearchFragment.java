@@ -13,11 +13,14 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.firebase.firestore.DocumentSnapshot;
+
 import com.example.traveling.R;
 import com.example.traveling.activities.MainActivity;
 import com.example.traveling.adapters.PostGridAdapter;
 import com.example.traveling.models.Post;
 import com.example.traveling.repositories.PostRepository;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +36,12 @@ public class SearchFragment extends Fragment {
     private PostGridAdapter postGridAdapter;
 
     private final List<Post> allPosts = new ArrayList<>();
+
+    private static final int PAGE_SIZE = 20;
+
+    private DocumentSnapshot lastVisibleDocument = null;
+    private boolean isLoading = false;
+    private boolean hasMorePosts = true;
 
     public SearchFragment() {
         // Required empty public constructor
@@ -50,7 +59,7 @@ public class SearchFragment extends Fragment {
         bindViews(view);
         setupRecycler();
         setupTabs();
-        loadPublicPosts();
+        loadFirstPage();
 
         return view;
     }
@@ -65,8 +74,28 @@ public class SearchFragment extends Fragment {
     private void setupRecycler() {
         postGridAdapter = new PostGridAdapter(this::openPostDetail);
 
-        recyclerSearchPosts.setLayoutManager(new GridLayoutManager(requireContext(), 2));
+        GridLayoutManager layoutManager = new GridLayoutManager(requireContext(), 2);
+        recyclerSearchPosts.setLayoutManager(layoutManager);
         recyclerSearchPosts.setAdapter(postGridAdapter);
+
+        recyclerSearchPosts.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+
+                if (dy <= 0) return;
+
+                int visibleItemCount = layoutManager.getChildCount();
+                int totalItemCount = layoutManager.getItemCount();
+                int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
+
+                boolean nearBottom = visibleItemCount + firstVisibleItemPosition >= totalItemCount - 4;
+
+                if (nearBottom) {
+                    loadNextPage();
+                }
+            }
+        });
     }
 
     private void setupTabs() {
@@ -93,37 +122,70 @@ public class SearchFragment extends Fragment {
         recyclerSearchPosts.setVisibility(View.VISIBLE);
     }
 
-    private void loadPublicPosts() {
-        textSearchStatus.setText("Chargement des publications...");
+    private void loadFirstPage() {
+        allPosts.clear();
+        postGridAdapter.submitList(allPosts);
 
-        postRepository.getPublicPosts(new PostRepository.OnPostsLoadedListener() {
-            @Override
-            public void onSuccess(List<Post> posts) {
-                if (!isAdded()) return;
+        lastVisibleDocument = null;
+        hasMorePosts = true;
 
-                allPosts.clear();
-                allPosts.addAll(posts);
+        loadNextPage();
+    }
 
-                postGridAdapter.submitList(allPosts);
+    private void loadNextPage() {
+        if (isLoading || !hasMorePosts) return;
 
-                if (allPosts.isEmpty()) {
-                    textSearchStatus.setText("Aucune publication publique pour le moment.");
-                } else {
-                    textSearchStatus.setText(allPosts.size() + " publication(s) publique(s)");
-                }
-            }
+        isLoading = true;
 
-            @Override
-            public void onError(Exception exception) {
-                if (!isAdded()) return;
+        if (allPosts.isEmpty()) {
+            textSearchStatus.setText("Chargement des publications...");
+        } else {
+            textSearchStatus.setText(allPosts.size() + " publication(s) chargée(s)...");
+        }
 
-                textSearchStatus.setText("Impossible de charger les publications.");
+        postRepository.getPublicPostsPage(lastVisibleDocument, PAGE_SIZE,
+                new PostRepository.OnPaginatedPostsLoadedListener() {
+                    @Override
+                    public void onSuccess(List<Post> posts, DocumentSnapshot newLastVisibleDocument) {
+                        if (!isAdded()) return;
 
-                Toast.makeText(requireContext(),
-                        "Erreur de chargement.",
-                        Toast.LENGTH_SHORT).show();
-            }
-        });
+                        isLoading = false;
+
+                        if (posts.isEmpty()) {
+                            hasMorePosts = false;
+
+                            if (allPosts.isEmpty()) {
+                                textSearchStatus.setText("Aucune publication publique pour le moment.");
+                            } else {
+                                textSearchStatus.setText(allPosts.size() + " publication(s) publique(s)");
+                            }
+
+                            return;
+                        }
+
+                        allPosts.addAll(posts);
+                        lastVisibleDocument = newLastVisibleDocument;
+
+                        if (posts.size() < PAGE_SIZE) {
+                            hasMorePosts = false;
+                        }
+
+                        postGridAdapter.submitList(allPosts);
+                        textSearchStatus.setText(allPosts.size() + " publication(s) publique(s)");
+                    }
+
+                    @Override
+                    public void onError(Exception exception) {
+                        if (!isAdded()) return;
+
+                        isLoading = false;
+                        textSearchStatus.setText("Impossible de charger les publications.");
+
+                        Toast.makeText(requireContext(),
+                                "Erreur de chargement.",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void openPostDetail(Post post) {
