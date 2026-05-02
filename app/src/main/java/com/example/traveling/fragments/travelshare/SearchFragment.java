@@ -467,6 +467,9 @@ public class SearchFragment extends Fragment {
         args.putString("postId", post.getId());
         args.putString("imageUrl", post.getImageUrl());
         args.putString("locationName", post.getLocationName());
+        args.putDouble("latitude", post.getLatitude());
+        args.putDouble("longitude", post.getLongitude());
+        args.putString("photonPlaceId", post.getPhotonPlaceId());
         args.putString("authorName", post.getAuthorName());
         args.putString("caption", post.getCaption());
         args.putInt("likeCount", post.getLikeCount());

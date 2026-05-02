@@ -104,6 +104,10 @@ public class FeedFragment extends Fragment {
         args.putString("locationName", post.getLocationName());
         args.putString("placeType", post.getPlaceType());
         args.putString("caption", post.getCaption());
+        args.putInt("commentCount", post.getCommentCount());
+        args.putDouble("latitude", post.getLatitude());
+        args.putDouble("longitude", post.getLongitude());
+        args.putString("photonPlaceId", post.getPhotonPlaceId());
         args.putString("imageUrl", post.getImageUrl());
         args.putInt("likeCount", post.getLikeCount());
         args.putLong("createdAt", post.getCreatedAt());
