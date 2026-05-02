@@ -1,6 +1,8 @@
 package com.example.traveling.fragments.travelshare;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,6 +38,12 @@ import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 
+import com.example.traveling.models.LocationSuggestion;
+import com.example.traveling.repositories.PhotonRepository;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
+import android.widget.ArrayAdapter;
+
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Calendar;
@@ -73,6 +81,12 @@ public class SearchFragment extends Fragment {
     private Long selectedEndDate = null;
     private String selectedPeriodLabel = "Toutes périodes";
 
+    private PhotonRepository photonRepository;
+
+    private LocationSuggestion selectedRadiusLocation = null;
+    private double selectedRadiusKm = 0.0;
+    private String radiusFilterLabel = "";
+
     public SearchFragment() {
         // Required empty public constructor
     }
@@ -85,6 +99,7 @@ public class SearchFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_search, container, false);
 
         postRepository = new PostRepository();
+        photonRepository = new PhotonRepository();
 
         bindViews(view);
         setupRecycler();
@@ -126,43 +141,221 @@ public class SearchFragment extends Fragment {
 
     private void showPeriodFilterDialog() {
         String[] options = {
-                "Toutes périodes",
-                "Aujourd’hui",
-                "Cette semaine",
-                "Ce mois-ci",
-                "Plage personnalisée"
+                "Période : toutes périodes",
+                "Période : aujourd’hui",
+                "Période : cette semaine",
+                "Période : ce mois-ci",
+                "Période : plage personnalisée",
+                "Localisation : autour d’un lieu",
+                "Réinitialiser les filtres"
         };
 
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("Filtrer par période")
-                .setSingleChoiceItems(options, getSelectedPeriodIndex(), (dialog, which) -> {
+                .setTitle("Filtres de recherche")
+                .setItems(options, (dialog, which) -> {
                     if (which == 0) {
                         selectedPeriodLabel = "Toutes périodes";
                         selectedStartDate = null;
                         selectedEndDate = null;
-                        dialog.dismiss();
                         loadFirstPage();
+
                     } else if (which == 1) {
                         selectedPeriodLabel = "Aujourd’hui";
                         setTodayRange();
-                        dialog.dismiss();
                         loadFirstPage();
+
                     } else if (which == 2) {
                         selectedPeriodLabel = "Cette semaine";
                         setThisWeekRange();
-                        dialog.dismiss();
                         loadFirstPage();
+
                     } else if (which == 3) {
                         selectedPeriodLabel = "Ce mois-ci";
                         setThisMonthRange();
-                        dialog.dismiss();
                         loadFirstPage();
-                    } else {
-                        dialog.dismiss();
+
+                    } else if (which == 4) {
                         showCustomStartDatePicker();
+
+                    } else if (which == 5) {
+                        showAroundLocationDialog();
+
+                    } else if (which == 6) {
+                        resetFilters();
                     }
                 })
                 .setNegativeButton("Annuler", null)
+                .show();
+    }
+
+    private void resetFilters() {
+        selectedPeriodLabel = "Toutes périodes";
+        selectedStartDate = null;
+        selectedEndDate = null;
+
+        selectedRadiusLocation = null;
+        selectedRadiusKm = 0.0;
+        radiusFilterLabel = "";
+
+        selectedPlaceType = "Tous";
+        chipGroupPlaceTypes.check(R.id.chipAll);
+
+        editTextSearch.setText("");
+
+        loadFirstPage();
+    }
+
+    private void showAroundLocationDialog() {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_radius_filter, null);
+
+        MaterialAutoCompleteTextView dropdownRadiusLocation =
+                dialogView.findViewById(R.id.dropdownRadiusLocation);
+
+        MaterialAutoCompleteTextView dropdownRadius =
+                dialogView.findViewById(R.id.dropdownRadius);
+
+        ArrayAdapter<LocationSuggestion> locationAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                new ArrayList<>()
+        );
+
+        dropdownRadiusLocation.setAdapter(locationAdapter);
+        dropdownRadiusLocation.setThreshold(3);
+
+        final LocationSuggestion[] pickedLocation = new LocationSuggestion[1];
+        final boolean[] isSettingRadiusLocationFromSuggestion = {false};
+        final ArrayAdapter<LocationSuggestion>[] currentLocationAdapter = new ArrayAdapter[]{locationAdapter};
+        final Handler handler = new Handler(Looper.getMainLooper());
+        final Runnable[] pendingSearch = new Runnable[1];
+
+        dropdownRadiusLocation.setOnItemClickListener((parent, view, position, id) -> {
+            ArrayAdapter<LocationSuggestion> adapter = currentLocationAdapter[0];
+
+            if (adapter == null || position < 0 || position >= adapter.getCount()) {
+                return;
+            }
+
+            LocationSuggestion suggestion = adapter.getItem(position);
+
+            if (suggestion != null) {
+                pickedLocation[0] = suggestion;
+
+                isSettingRadiusLocationFromSuggestion[0] = true;
+                dropdownRadiusLocation.setText(suggestion.getDisplayName(), false);
+                dropdownRadiusLocation.dismissDropDown();
+                if (pendingSearch[0] != null) {
+                    handler.removeCallbacks(pendingSearch[0]);
+                }
+
+                dropdownRadiusLocation.clearFocus();
+                isSettingRadiusLocationFromSuggestion[0] = false;
+
+                dropdownRadiusLocation.setError(null);
+            }
+        });
+
+        dropdownRadiusLocation.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (isSettingRadiusLocationFromSuggestion[0]) {
+                    return;
+                }
+
+                pickedLocation[0] = null;
+
+                String query = s == null ? "" : s.toString().trim();
+
+                if (pendingSearch[0] != null) {
+                    handler.removeCallbacks(pendingSearch[0]);
+                }
+
+                if (query.length() < 3) {
+                    locationAdapter.clear();
+                    locationAdapter.notifyDataSetChanged();
+                    return;
+                }
+
+                pendingSearch[0] = () -> photonRepository.searchLocations(
+                        query,
+                        new PhotonRepository.OnLocationSuggestionsLoadedListener() {
+                            @Override
+                            public void onSuccess(List<LocationSuggestion> suggestions) {
+                                if (!isAdded()) return;
+
+                                ArrayAdapter<LocationSuggestion> freshAdapter = new ArrayAdapter<>(
+                                        requireContext(),
+                                        android.R.layout.simple_dropdown_item_1line,
+                                        suggestions
+                                );
+                                currentLocationAdapter[0] = freshAdapter;
+                                dropdownRadiusLocation.setAdapter(freshAdapter);
+
+                                dropdownRadiusLocation.postDelayed(() -> {
+                                    if (!isSettingRadiusLocationFromSuggestion[0]
+                                            && pickedLocation[0] == null
+                                            && dropdownRadiusLocation.hasFocus()
+                                            && !suggestions.isEmpty()) {
+                                        dropdownRadiusLocation.dismissDropDown();
+                                        dropdownRadiusLocation.showDropDown();
+                                    }
+                                }, 100);
+                            }
+
+                            @Override
+                            public void onError(Exception exception) {
+                                if (!isAdded()) return;
+                            }
+                        });
+
+                handler.postDelayed(pendingSearch[0], 350);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+
+        String[] radiusOptions = {"1 km", "5 km", "10 km", "25 km", "50 km"};
+
+        ArrayAdapter<String> radiusAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                radiusOptions
+        );
+
+        dropdownRadius.setAdapter(radiusAdapter);
+        dropdownRadius.setText("10 km", false);
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Autour d’un lieu")
+                .setView(dialogView)
+                .setPositiveButton("Appliquer", (dialog, which) -> {
+                    if (pickedLocation[0] == null) {
+                        Toast.makeText(requireContext(),
+                                "Sélectionnez un lieu dans les suggestions.",
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    selectedRadiusLocation = pickedLocation[0];
+                    selectedRadiusKm = parseRadius(dropdownRadius.getText().toString());
+                    radiusFilterLabel = "Autour de " + selectedRadiusLocation.getDisplayName();
+
+                    loadFirstPage();
+                })
+                .setNegativeButton("Annuler", null)
+                .setNeutralButton("Réinitialiser", (dialog, which) -> {
+                    selectedRadiusLocation = null;
+                    selectedRadiusKm = 0.0;
+                    radiusFilterLabel = "";
+                    loadFirstPage();
+                })
                 .show();
     }
 
@@ -359,7 +552,7 @@ public class SearchFragment extends Fragment {
         visiblePosts.clear();
 
         for (Post post : allPosts) {
-            if (matchesSearch(post)) {
+            if (matchesSearch(post) && matchesRadius(post)) {
                 visiblePosts.add(post);
             }
         }
@@ -393,6 +586,41 @@ public class SearchFragment extends Fragment {
                 || placeType.contains(currentSearchQuery);
     }
 
+    private boolean matchesRadius(Post post) {
+        if (selectedRadiusLocation == null || selectedRadiusKm <= 0) {
+            return true;
+        }
+
+        if (!hasValidCoordinates(post)) {
+            return false;
+        }
+
+        double distanceKm = distanceKm(
+                selectedRadiusLocation.getLatitude(),
+                selectedRadiusLocation.getLongitude(),
+                post.getLatitude(),
+                post.getLongitude()
+        );
+
+        return distanceKm <= selectedRadiusKm;
+    }
+
+    private double distanceKm(double lat1, double lon1, double lat2, double lon2) {
+        final double earthRadiusKm = 6371.0;
+
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1))
+                * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return earthRadiusKm * c;
+    }
+
     private String safe(String value) {
         return value == null ? "" : value.trim();
     }
@@ -413,10 +641,43 @@ public class SearchFragment extends Fragment {
     }
 
     private void updatePublicationStatus() {
+        String suffix = "";
+
+        if (!TextUtils.isEmpty(radiusFilterLabel)) {
+            suffix = " · " + radiusFilterLabel + " (" + formatRadius(selectedRadiusKm) + ")";
+        }
+
         if (visiblePosts.isEmpty()) {
-            textSearchStatus.setText("Aucun résultat trouvé.");
+            textSearchStatus.setText("Aucun résultat trouvé" + suffix + ".");
         } else {
-            textSearchStatus.setText(visiblePosts.size() + " résultat(s)");
+            textSearchStatus.setText(visiblePosts.size() + " résultat(s)" + suffix);
+        }
+    }
+
+    private String formatRadius(double radiusKm) {
+        if (radiusKm <= 0) return "";
+
+        if (radiusKm == Math.floor(radiusKm)) {
+            return String.format(Locale.FRANCE, "%.0f km", radiusKm);
+        }
+
+        return String.format(Locale.FRANCE, "%.1f km", radiusKm);
+    }
+
+    private double parseRadius(String radiusText) {
+        if (radiusText == null) {
+            return 10.0;
+        }
+
+        String cleaned = radiusText
+                .replace("km", "")
+                .replace(",", ".")
+                .trim();
+
+        try {
+            return Double.parseDouble(cleaned);
+        } catch (NumberFormatException exception) {
+            return 10.0;
         }
     }
 
