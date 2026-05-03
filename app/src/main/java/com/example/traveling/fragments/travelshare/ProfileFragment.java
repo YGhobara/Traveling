@@ -361,6 +361,8 @@ public class ProfileFragment extends Fragment {
         buttonEditProfile.setVisibility(View.VISIBLE);
         buttonEditProfileLarge.setText("Modifier le profil");
         textProfileSectionPlaceholder.setText("Les photos publiées apparaîtront ici.");
+        setStat(statFollowers, String.valueOf(userProfile.getFollowersCount()), "Abonnés");
+        setStat(statFollowing, String.valueOf(userProfile.getFollowingCount()), "Abonnements");
     }
 
     private void displayFallbackProfile(FirebaseUser currentUser) {
@@ -388,10 +390,6 @@ public class ProfileFragment extends Fragment {
                 int voyagesCount = countDistinctLocations(posts);
 
                 setStat(statTrips, String.valueOf(voyagesCount), "Voyages");
-
-                // Temporary placeholders until follow system exists
-                setStat(statFollowers, "0", "Abonnés");
-                setStat(statFollowing, "0", "Abonnements");
 
                 loadGroupCount(userId, photosCount);
                 showPhotosSection();

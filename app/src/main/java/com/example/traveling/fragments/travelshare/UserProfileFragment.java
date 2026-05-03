@@ -322,6 +322,8 @@ public class UserProfileFragment extends Fragment {
         textFullName.setText(!TextUtils.isEmpty(fullName) ? fullName : "Voyageur");
         textUsername.setText(!TextUtils.isEmpty(username) ? "@" + username : "@voyageur");
         textAvatarInitials.setText(makeInitials(firstName, lastName, username, email));
+        setStat(statFollowers, String.valueOf(userProfile.getFollowersCount()), "Abonnés");
+        setStat(statFollowing, String.valueOf(userProfile.getFollowingCount()), "Abonnements");
         checkFollowState();
 
     }
@@ -338,8 +340,6 @@ public class UserProfileFragment extends Fragment {
                 profilePhotosAdapter.submitList(posts);
 
                 setStat(statTrips, String.valueOf(voyagesCount), "Voyages");
-                setStat(statFollowers, "0", "Abonnés");
-                setStat(statFollowing, "0", "Abonnements");
 
                 setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, true);
                 setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
