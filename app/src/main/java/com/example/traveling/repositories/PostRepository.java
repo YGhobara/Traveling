@@ -70,6 +70,11 @@ public class PostRepository {
         void onError(Exception exception);
     }
 
+    public interface OnPostCreatedListener {
+        void onSuccess(String postId);
+        void onError(Exception exception);
+    }
+
     public void toggleLike(Post post, String userId, final OnPostActionListener listener) {
         if (post == null || post.getId() == null || userId == null) {
             listener.onError(new IllegalArgumentException("Invalid post or user."));
@@ -194,6 +199,21 @@ public class PostRepository {
 
         postRef.set(post)
                 .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
+
+    public void createPostAndReturnId(Post post, final OnPostCreatedListener listener) {
+        if (post == null) {
+            listener.onError(new IllegalArgumentException("Post cannot be null."));
+            return;
+        }
+
+        DocumentReference postRef = db.collection("posts").document();
+
+        post.setId(postRef.getId());
+
+        postRef.set(post)
+                .addOnSuccessListener(unused -> listener.onSuccess(postRef.getId()))
                 .addOnFailureListener(listener::onError);
     }
 

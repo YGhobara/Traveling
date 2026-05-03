@@ -22,6 +22,8 @@ import com.example.traveling.models.LocationSuggestion;
 import com.example.traveling.repositories.PhotonRepository;
 import com.example.traveling.repositories.PostRepository;
 import com.example.traveling.repositories.UserRepository;
+import com.example.traveling.repositories.NotificationRepository;
+import com.example.traveling.repositories.FollowRepository;
 import com.example.traveling.models.Group;
 import com.example.traveling.repositories.GroupRepository;
 import com.google.android.material.textfield.TextInputLayout;
@@ -43,6 +45,9 @@ import com.cloudinary.android.MediaManager;
 import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
 
+
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
@@ -58,6 +63,8 @@ public class NewPostFragment extends Fragment {
     private PostRepository postRepository;
     private UserRepository userRepository;
     private PhotonRepository photonRepository;
+    private NotificationRepository notificationRepository;
+    private FollowRepository followRepository;
     private ArrayAdapter<LocationSuggestion> locationAdapter;
     private LocationSuggestion selectedLocationSuggestion;
     private String latestLocationQuery = "";
@@ -132,6 +139,8 @@ public class NewPostFragment extends Fragment {
         userRepository = new UserRepository();
         photonRepository = new PhotonRepository();
         groupRepository = new GroupRepository();
+        notificationRepository = new NotificationRepository();
+        followRepository = new FollowRepository();
 
         setupPlaceTypeDropdown();
         setupLocationAutocomplete();
@@ -566,9 +575,13 @@ public class NewPostFragment extends Fragment {
 
         post.setLikedBy(new ArrayList<>());
 
-        postRepository.createPost(post, new PostRepository.OnPostActionListener() {
+        postRepository.createPostAndReturnId(post, new PostRepository.OnPostCreatedListener() {
             @Override
-            public void onSuccess() {
+            public void onSuccess(String createdPostId) {
+                if (!isAdded()) return;
+
+                createNotificationsForPost(post, createdPostId);
+
                 Toast.makeText(requireContext(),
                         "Publication ajoutée.",
                         Toast.LENGTH_SHORT).show();
@@ -581,6 +594,8 @@ public class NewPostFragment extends Fragment {
 
             @Override
             public void onError(Exception exception) {
+                if (!isAdded()) return;
+
                 buttonPublish.setEnabled(true);
                 buttonPublish.setText("Publier");
 
@@ -589,6 +604,112 @@ public class NewPostFragment extends Fragment {
                         Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void createNotificationsForPost(Post post, String createdPostId) {
+        if (post == null || createdPostId == null) return;
+
+        Set<String> recipientIds = new HashSet<>();
+        String authorId = post.getUserId();
+
+        // 1) Notify followers of the author, only if the post is public
+        if (post.isPublicPost()) {
+            followRepository.getFollowerIds(authorId, new FollowRepository.UserIdsListener() {
+                @Override
+                public void onSuccess(List<String> userIds) {
+                    if (userIds != null) {
+                        recipientIds.addAll(userIds);
+                    }
+
+                    loadPlaceTypeNotificationRecipients(post, createdPostId, recipientIds);
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    loadPlaceTypeNotificationRecipients(post, createdPostId, recipientIds);
+                }
+            });
+        } else {
+            loadGroupNotificationRecipients(post, createdPostId, recipientIds);
+        }
+    }
+
+    private void loadPlaceTypeNotificationRecipients(Post post,
+                                                     String createdPostId,
+                                                     Set<String> recipientIds) {
+        if (post.isPublicPost() && !TextUtils.isEmpty(post.getPlaceType())) {
+            followRepository.getUsersFollowingPlaceType(post.getPlaceType(), new FollowRepository.UserIdsListener() {
+                @Override
+                public void onSuccess(List<String> userIds) {
+                    if (userIds != null) {
+                        recipientIds.addAll(userIds);
+                    }
+
+                    loadGroupNotificationRecipients(post, createdPostId, recipientIds);
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    loadGroupNotificationRecipients(post, createdPostId, recipientIds);
+                }
+            });
+        } else {
+            loadGroupNotificationRecipients(post, createdPostId, recipientIds);
+        }
+    }
+
+    private void loadGroupNotificationRecipients(Post post,
+                                                 String createdPostId,
+                                                 Set<String> recipientIds) {
+        if (!TextUtils.isEmpty(post.getGroupId()) && selectedGroup != null && selectedGroup.getMemberIds() != null) {
+            recipientIds.addAll(selectedGroup.getMemberIds());
+        }
+
+        sendPostNotifications(post, createdPostId, recipientIds);
+    }
+
+    private void sendPostNotifications(Post post, String createdPostId, Set<String> recipientIds) {
+        if (recipientIds == null || recipientIds.isEmpty()) return;
+
+        // Do not notify the author about their own publication.
+        recipientIds.remove(post.getUserId());
+
+        if (recipientIds.isEmpty()) return;
+
+        String title = "Nouvelle publication";
+        String message;
+
+        if (!TextUtils.isEmpty(post.getGroupName())) {
+            message = post.getAuthorName() + " a publié une photo dans " + post.getGroupName();
+        } else if (!TextUtils.isEmpty(post.getPlaceType())) {
+            message = post.getAuthorName() + " a publié une photo : " + post.getPlaceType();
+        } else {
+            message = post.getAuthorName() + " a publié une nouvelle photo";
+        }
+
+        String type = !TextUtils.isEmpty(post.getGroupId())
+                ? "group_post"
+                : "new_post";
+
+        notificationRepository.createNotificationsForUsers(
+                new ArrayList<>(recipientIds),
+                title,
+                message,
+                type,
+                createdPostId,
+                post.getGroupId(),
+                new NotificationRepository.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        // Notifications created silently.
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        // Do not block publication if notifications fail.
+                    }
+                }
+        );
     }
 
     private String getText(TextInputEditText editText) {

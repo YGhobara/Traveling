@@ -24,6 +24,11 @@ public class FollowRepository {
         void onError(Exception e);
     }
 
+    public interface UserIdsListener {
+        void onSuccess(java.util.List<String> userIds);
+        void onError(Exception e);
+    }
+
     private final FirebaseFirestore db;
 
     public FollowRepository() {
@@ -211,6 +216,51 @@ public class FollowRepository {
                     }
 
                     listener.onSuccess(placeTypes);
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
+    public void getFollowerIds(String userId, UserIdsListener listener) {
+        if (userId == null || userId.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid user id."));
+            return;
+        }
+
+        db.collection("users")
+                .document(userId)
+                .collection("followers")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    java.util.List<String> ids = new java.util.ArrayList<>();
+
+                    for (com.google.firebase.firestore.DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+                        ids.add(document.getId());
+                    }
+
+                    listener.onSuccess(ids);
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
+    public void getUsersFollowingPlaceType(String placeType, UserIdsListener listener) {
+        if (placeType == null || placeType.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid place type."));
+            return;
+        }
+
+        db.collectionGroup("followedPlaceTypes")
+                .whereEqualTo("placeType", placeType)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    java.util.List<String> ids = new java.util.ArrayList<>();
+
+                    for (com.google.firebase.firestore.DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+                        if (document.getReference().getParent().getParent() != null) {
+                            ids.add(document.getReference().getParent().getParent().getId());
+                        }
+                    }
+
+                    listener.onSuccess(ids);
                 })
                 .addOnFailureListener(listener::onError);
     }

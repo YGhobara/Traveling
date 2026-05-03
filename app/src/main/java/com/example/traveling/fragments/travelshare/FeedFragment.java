@@ -6,6 +6,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ImageButton;
+
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,6 +19,7 @@ import com.example.traveling.R;
 import com.example.traveling.adapters.PostAdapter;
 import com.example.traveling.models.Post;
 import com.example.traveling.repositories.PostRepository;
+import com.example.traveling.repositories.NotificationRepository;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -25,6 +28,9 @@ import com.google.android.material.button.MaterialButton;
 import java.util.List;
 
 public class FeedFragment extends Fragment {
+    private ImageButton buttonNotifications;
+    private View viewNotificationDot;
+
     private FirebaseAuth firebaseAuth;
     private RecyclerView recyclerViewPosts;
     private TextView textEmptyFeed;
@@ -32,6 +38,7 @@ public class FeedFragment extends Fragment {
 
     private PostAdapter postAdapter;
     private PostRepository postRepository;
+    private NotificationRepository notificationRepository;
 
     public FeedFragment() {
     }
@@ -53,6 +60,14 @@ public class FeedFragment extends Fragment {
                         .openFragmentWithBackStack(new GroupsFragment())
         );
 
+        buttonNotifications = view.findViewById(R.id.buttonNotifications);
+        buttonNotifications.setOnClickListener(v ->
+                Toast.makeText(requireContext(),
+                        "Notifications à venir.",
+                        Toast.LENGTH_SHORT).show()
+        );
+        viewNotificationDot = view.findViewById(R.id.viewNotificationDot);
+
         recyclerViewPosts.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         firebaseAuth = FirebaseAuth.getInstance();
@@ -68,10 +83,45 @@ public class FeedFragment extends Fragment {
         recyclerViewPosts.setAdapter(postAdapter);
 
         postRepository = new PostRepository();
+        notificationRepository = new NotificationRepository();
 
         loadPosts();
+        loadUnreadNotificationCount();
 
         return view;
+    }
+
+    private void loadUnreadNotificationCount() {
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        if (currentUser == null) {
+            viewNotificationDot.setVisibility(View.GONE);
+            return;
+        }
+
+        notificationRepository.getUnreadCount(currentUser.getUid(), new NotificationRepository.CountListener() {
+            @Override
+            public void onSuccess(int count) {
+                if (!isAdded()) return;
+
+                viewNotificationDot.setVisibility(count > 0 ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (!isAdded()) return;
+
+                viewNotificationDot.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (notificationRepository != null) {
+            loadUnreadNotificationCount();
+        }
     }
 
     private void loadPosts() {
