@@ -8,7 +8,9 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import com.example.traveling.repositories.FollowRepository;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -34,6 +36,8 @@ public class UserProfileFragment extends Fragment {
 
     private UserRepository userRepository;
     private PostRepository postRepository;
+    private FollowRepository followRepository;
+    private FirebaseAuth firebaseAuth;
 
     private String targetUserId;
 
@@ -57,6 +61,8 @@ public class UserProfileFragment extends Fragment {
     private PostGridAdapter profilePhotosAdapter;
 
     private int currentPhotosCount = 0;
+    private boolean isFollowing = false;
+    private String targetDisplayName = "Voyageur";
 
     public UserProfileFragment() {
         // Required empty public constructor
@@ -81,6 +87,8 @@ public class UserProfileFragment extends Fragment {
 
         userRepository = new UserRepository();
         postRepository = new PostRepository();
+        followRepository = new FollowRepository();
+        firebaseAuth = FirebaseAuth.getInstance();
 
         if (getArguments() != null) {
             targetUserId = getArguments().getString(ARG_USER_ID);
@@ -150,11 +158,7 @@ public class UserProfileFragment extends Fragment {
                 requireActivity().getSupportFragmentManager().popBackStack()
         );
 
-        buttonFollowUser.setOnClickListener(v ->
-                Toast.makeText(requireContext(),
-                        "Suivi d'utilisateur à venir.",
-                        Toast.LENGTH_SHORT).show()
-        );
+        buttonFollowUser.setOnClickListener(v -> toggleFollow());
 
         tabPhotos.setOnClickListener(v -> showPhotosSection());
 
@@ -197,6 +201,111 @@ public class UserProfileFragment extends Fragment {
         });
     }
 
+    private void checkFollowState() {
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        if (currentUser == null) {
+            buttonFollowUser.setText("Se connecter pour suivre");
+            buttonFollowUser.setEnabled(false);
+            return;
+        }
+
+        if (targetUserId != null && targetUserId.equals(currentUser.getUid())) {
+            buttonFollowUser.setVisibility(View.GONE);
+            return;
+        }
+
+        followRepository.isFollowing(currentUser.getUid(), targetUserId, new FollowRepository.FollowCheckListener() {
+            @Override
+            public void onResult(boolean following) {
+                if (!isAdded()) return;
+
+                isFollowing = following;
+                updateFollowButton();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (!isAdded()) return;
+
+                buttonFollowUser.setText("Suivre");
+                buttonFollowUser.setEnabled(true);
+            }
+        });
+    }
+
+    private void updateFollowButton() {
+        buttonFollowUser.setEnabled(true);
+        buttonFollowUser.setText(isFollowing ? "Ne plus suivre" : "Suivre");
+    }
+
+    private void toggleFollow() {
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    "Connectez-vous pour suivre un utilisateur.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (targetUserId == null || targetUserId.equals(currentUser.getUid())) {
+            return;
+        }
+
+        buttonFollowUser.setEnabled(false);
+
+        if (isFollowing) {
+            followRepository.unfollowUser(currentUser.getUid(), targetUserId, new FollowRepository.FollowActionListener() {
+                @Override
+                public void onSuccess() {
+                    if (!isAdded()) return;
+
+                    isFollowing = false;
+                    updateFollowButton();
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    if (!isAdded()) return;
+
+                    updateFollowButton();
+                    Toast.makeText(requireContext(),
+                            "Erreur désabonnement : " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        } else {
+            String currentUserName = currentUser.getEmail() != null ? currentUser.getEmail() : "Voyageur";
+
+            followRepository.followUser(
+                    currentUser.getUid(),
+                    targetUserId,
+                    currentUserName,
+                    targetDisplayName,
+                    new FollowRepository.FollowActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            if (!isAdded()) return;
+
+                            isFollowing = true;
+                            updateFollowButton();
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            if (!isAdded()) return;
+
+                            updateFollowButton();
+                            Toast.makeText(requireContext(),
+                                    "Erreur abonnement : " + e.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }
+            );
+        }
+    }
+
     private void displayUserProfile(UserProfile userProfile) {
         String firstName = safe(userProfile.getFirstName());
         String lastName = safe(userProfile.getLastName());
@@ -208,10 +317,13 @@ public class UserProfileFragment extends Fragment {
         if (TextUtils.isEmpty(fullName)) {
             fullName = userProfile.getDisplayName();
         }
+        targetDisplayName = !TextUtils.isEmpty(fullName) ? fullName : "Voyageur";
 
         textFullName.setText(!TextUtils.isEmpty(fullName) ? fullName : "Voyageur");
         textUsername.setText(!TextUtils.isEmpty(username) ? "@" + username : "@voyageur");
         textAvatarInitials.setText(makeInitials(firstName, lastName, username, email));
+        checkFollowState();
+
     }
 
     private void loadUserPosts() {
