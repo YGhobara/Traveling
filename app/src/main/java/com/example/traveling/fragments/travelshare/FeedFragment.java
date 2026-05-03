@@ -20,6 +20,7 @@ import com.example.traveling.repositories.PostRepository;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
 
@@ -27,6 +28,8 @@ public class FeedFragment extends Fragment {
     private FirebaseAuth firebaseAuth;
     private RecyclerView recyclerViewPosts;
     private TextView textEmptyFeed;
+    private MaterialButton buttonOpenGroups;
+
     private PostAdapter postAdapter;
     private PostRepository postRepository;
 
@@ -43,6 +46,12 @@ public class FeedFragment extends Fragment {
 
         recyclerViewPosts = view.findViewById(R.id.recyclerViewPosts);
         textEmptyFeed = view.findViewById(R.id.textEmptyFeed);
+
+        buttonOpenGroups = view.findViewById(R.id.buttonOpenGroups);
+        buttonOpenGroups.setOnClickListener(v ->
+                ((com.example.traveling.activities.MainActivity) requireActivity())
+                        .openFragmentWithBackStack(new GroupsFragment())
+        );
 
         recyclerViewPosts.setLayoutManager(new LinearLayoutManager(requireContext()));
 
