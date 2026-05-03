@@ -154,4 +154,10 @@ public class Group {
     public void setMemberCount(int memberCount) {
         this.memberCount = memberCount;
     }
+
+    @Override
+    @Exclude
+    public String toString() {
+        return name != null ? name : "Groupe";
+    }
 }

@@ -22,6 +22,9 @@ import com.example.traveling.models.LocationSuggestion;
 import com.example.traveling.repositories.PhotonRepository;
 import com.example.traveling.repositories.PostRepository;
 import com.example.traveling.repositories.UserRepository;
+import com.example.traveling.models.Group;
+import com.example.traveling.repositories.GroupRepository;
+import com.google.android.material.textfield.TextInputLayout;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
@@ -72,6 +75,15 @@ public class NewPostFragment extends Fragment {
     private static final String CLOUDINARY_UPLOAD_PRESET = "traveling_unsigned";
     private MaterialAutoCompleteTextView dropdownPlaceType;
 
+    private SwitchMaterial switchShareToGroup;
+    private TextInputLayout layoutGroupDropdown;
+    private MaterialAutoCompleteTextView dropdownGroup;
+
+    private GroupRepository groupRepository;
+    private ArrayAdapter<Group> groupAdapter;
+    private Group selectedGroup;
+    private List<Group> myGroups = new ArrayList<>();
+
     public NewPostFragment() {
         // Required empty public constructor
     }
@@ -112,13 +124,18 @@ public class NewPostFragment extends Fragment {
         imagePreview = view.findViewById(R.id.imagePreview);
         buttonChooseImage = view.findViewById(R.id.buttonChooseImage);
         dropdownPlaceType = view.findViewById(R.id.dropdownPlaceType);
+        switchShareToGroup = view.findViewById(R.id.switchShareToGroup);
+        layoutGroupDropdown = view.findViewById(R.id.layoutGroupDropdown);
+        dropdownGroup = view.findViewById(R.id.dropdownGroup);
 
         postRepository = new PostRepository();
         userRepository = new UserRepository();
         photonRepository = new PhotonRepository();
+        groupRepository = new GroupRepository();
 
         setupPlaceTypeDropdown();
         setupLocationAutocomplete();
+        setupGroupSharing();
         auth = FirebaseAuth.getInstance();
 
         buttonPublish.setOnClickListener(v -> publishPost());
@@ -256,6 +273,86 @@ public class NewPostFragment extends Fragment {
         });
     }
 
+    private void setupGroupSharing() {
+        groupAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                myGroups
+        );
+
+        dropdownGroup.setAdapter(groupAdapter);
+
+        switchShareToGroup.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            layoutGroupDropdown.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+
+            if (!isChecked) {
+                selectedGroup = null;
+                dropdownGroup.setText("", false);
+            } else {
+                loadMyGroupsForPosting();
+            }
+        });
+
+        dropdownGroup.setOnClickListener(v -> dropdownGroup.showDropDown());
+
+        dropdownGroup.setOnItemClickListener((parent, view, position, id) -> {
+            Group group = groupAdapter.getItem(position);
+
+            if (group != null) {
+                selectedGroup = group;
+                dropdownGroup.setText(group.getName(), false);
+                dropdownGroup.setError(null);
+            }
+        });
+    }
+
+    private void loadMyGroupsForPosting() {
+        FirebaseUser currentUser = auth.getCurrentUser();
+
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    "Connectez-vous pour publier dans un groupe.",
+                    Toast.LENGTH_SHORT).show();
+
+            switchShareToGroup.setChecked(false);
+            return;
+        }
+
+        groupRepository.getMyGroups(currentUser.getUid(), new GroupRepository.GroupListListener() {
+            @Override
+            public void onSuccess(List<Group> groups) {
+                if (!isAdded()) return;
+
+                myGroups.clear();
+
+                if (groups != null) {
+                    myGroups.addAll(groups);
+                }
+
+                groupAdapter.notifyDataSetChanged();
+
+                if (myGroups.isEmpty()) {
+                    Toast.makeText(requireContext(),
+                            "Vous n'avez rejoint aucun groupe.",
+                            Toast.LENGTH_SHORT).show();
+
+                    switchShareToGroup.setChecked(false);
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (!isAdded()) return;
+
+                Toast.makeText(requireContext(),
+                        "Impossible de charger vos groupes.",
+                        Toast.LENGTH_SHORT).show();
+
+                switchShareToGroup.setChecked(false);
+            }
+        });
+    }
+
     private void publishPost() {
         FirebaseUser currentUser = auth.getCurrentUser();
 
@@ -297,6 +394,22 @@ public class NewPostFragment extends Fragment {
             return;
         }
 
+        final String selectedGroupId;
+        final String selectedGroupName;
+
+        if (switchShareToGroup.isChecked()) {
+            if (selectedGroup == null) {
+                dropdownGroup.setError("Choisissez un groupe.");
+                return;
+            }
+
+            selectedGroupId = selectedGroup.getId();
+            selectedGroupName = selectedGroup.getName();
+        } else {
+            selectedGroupId = null;
+            selectedGroupName = null;
+        }
+
         buttonPublish.setEnabled(false);
 
         userRepository.getUserProfile(currentUser.getUid(), new UserRepository.OnUserProfileLoadedListener() {
@@ -318,7 +431,9 @@ public class NewPostFragment extends Fragment {
                         selectedLocationSuggestion.getPhotonPlaceId(),
                         placeType,
                         imageUrl,
-                        publicPost
+                        publicPost,
+                        selectedGroupId,
+                        selectedGroupName
                 );
             }
 
@@ -335,7 +450,9 @@ public class NewPostFragment extends Fragment {
                         selectedLocationSuggestion.getPhotonPlaceId(),
                         placeType,
                         imageUrl,
-                        publicPost
+                        publicPost,
+                        selectedGroupId,
+                        selectedGroupName
                 );
             }
         });
@@ -350,9 +467,11 @@ public class NewPostFragment extends Fragment {
                                                   String photonPlaceId,
                                                   String placeType,
                                                   String fallbackImageUrl,
-                                                  boolean publicPost) {
+                                                  boolean publicPost,
+                                                  String groupId,
+                                                  String groupName) {
         if (selectedImageUri == null) {
-            createPost(userId, authorName, caption, location, latitude, longitude, photonPlaceId, placeType, fallbackImageUrl, publicPost);
+            createPost(userId, authorName, caption, location, latitude, longitude, photonPlaceId, placeType, fallbackImageUrl, publicPost, groupId, groupName);
             return;
         }
 
@@ -390,7 +509,7 @@ public class NewPostFragment extends Fragment {
 
                         String uploadedImageUrl = secureUrlObject.toString();
 
-                        createPost(userId, authorName, caption, location, latitude, longitude, photonPlaceId, placeType, uploadedImageUrl, publicPost);
+                        createPost(userId, authorName, caption, location, latitude, longitude, photonPlaceId, placeType, uploadedImageUrl, publicPost, groupId, groupName);
                     }
 
                     @Override
@@ -422,7 +541,9 @@ public class NewPostFragment extends Fragment {
                             String photonPlaceId,
                             String placeType,
                             String imageUrl,
-                            boolean publicPost) {
+                            boolean publicPost,
+                            String groupId,
+                            String groupName) {
         buttonPublish.setText("Publication...");
         Post post = new Post(
                 null,
@@ -438,7 +559,9 @@ public class NewPostFragment extends Fragment {
                 System.currentTimeMillis(),
                 0,
                 0,
-                publicPost
+                publicPost,
+                groupId,
+                groupName
         );
 
         post.setLikedBy(new ArrayList<>());

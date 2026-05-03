@@ -1,4 +1,6 @@
 package com.example.traveling.models;
+import com.google.firebase.firestore.Exclude;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,15 +20,18 @@ public class Post {
     private int likeCount;
     private int commentCount;
     private boolean publicPost;
+    private String groupId;
+    private String groupName;
     private List<String> likedBy = new ArrayList<>();
     public Post() {
         // Required empty constructor for Firestore
     }
 
     public Post(String id, String userId, String authorName, String caption,
-                 String imageUrl, String locationName, double latitude, double longitude,
-                 String photonPlaceId, String placeType, long createdAt,
-                 int likeCount, int commentCount, boolean publicPost) {
+                String imageUrl, String locationName, double latitude, double longitude,
+                String photonPlaceId, String placeType, long createdAt,
+                int likeCount, int commentCount, boolean publicPost,
+                String groupId, String groupName) {
         this.id = id;
         this.userId = userId;
         this.authorName = authorName;
@@ -41,6 +46,8 @@ public class Post {
         this.likeCount = likeCount;
         this.commentCount = commentCount;
         this.publicPost = publicPost;
+        this.groupId = groupId;
+        this.groupName = groupName;
     }
 
     public String getId() {
@@ -161,5 +168,26 @@ public class Post {
 
     public void setPlaceType(String placeType) {
         this.placeType = placeType;
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
+    }
+
+    @Exclude
+    public boolean isGroupPost() {
+        return groupId != null && !groupId.trim().isEmpty();
     }
 }
