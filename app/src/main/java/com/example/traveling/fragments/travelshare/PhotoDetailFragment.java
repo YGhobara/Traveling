@@ -26,6 +26,7 @@ import com.example.traveling.models.Report;
 import com.example.traveling.repositories.ReportRepository;
 
 import com.bumptech.glide.Glide;
+import com.example.traveling.activities.MainActivity;
 import com.example.traveling.R;
 import com.example.traveling.adapters.CommentAdapter;
 import com.example.traveling.models.Comment;
@@ -151,6 +152,8 @@ public class PhotoDetailFragment extends Fragment {
         buttonDirectionsCar.setOnClickListener(v -> openDirectionsInMaps("driving"));
         buttonDirectionsWalk.setOnClickListener(v -> openDirectionsInMaps("walking"));
         buttonDirectionsTransit.setOnClickListener(v -> openDirectionsInMaps("transit"));
+        textAuthor.setOnClickListener(v -> openAuthorProfile());
+        textAuthor.setTextColor(Color.parseColor("#1565C0"));
 
         loadFreshPost();
         loadComments();
@@ -215,6 +218,30 @@ public class PhotoDetailFragment extends Fragment {
 
         loadImage(post.getImageUrl());
         updateLikeIcon(post);
+    }
+
+    private void openAuthorProfile() {
+        if (currentPost == null || TextUtils.isEmpty(currentPost.getUserId())) {
+            Toast.makeText(requireContext(),
+                    "Profil utilisateur introuvable.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+        String authorId = currentPost.getUserId();
+
+        if (currentUser != null && authorId.equals(currentUser.getUid())) {
+            if (requireActivity() instanceof MainActivity) {
+                ((MainActivity) requireActivity())
+                        .openFragmentWithBackStack(new ProfileFragment());
+            }
+        } else {
+            if (requireActivity() instanceof MainActivity) {
+                ((MainActivity) requireActivity())
+                        .openFragmentWithBackStack(UserProfileFragment.newInstance(authorId));
+            }
+        }
     }
 
     private void displayPlaceType(String placeType) {
