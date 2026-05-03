@@ -92,13 +92,13 @@ public class GroupsFragment extends Fragment {
 
         myGroupsAdapter = new GroupAdapter(
                 userId,
-                group -> openGroupLater(),
+                group -> openGroup(group),
                 group -> joinGroup(group)
         );
 
         discoverGroupsAdapter = new GroupAdapter(
                 userId,
-                group -> openGroupLater(),
+                group -> openGroup(group),
                 group -> joinGroup(group)
         );
 
@@ -291,9 +291,12 @@ public class GroupsFragment extends Fragment {
         });
     }
 
-    private void openGroupLater() {
-        Toast.makeText(requireContext(),
-                "Détail du groupe à venir.",
-                Toast.LENGTH_SHORT).show();
+    private void openGroup(Group group) {
+        if (group == null || group.getId() == null) return;
+
+        if (requireActivity() instanceof com.example.traveling.activities.MainActivity) {
+            ((com.example.traveling.activities.MainActivity) requireActivity())
+                    .openFragmentWithBackStack(GroupDetailFragment.newInstance(group.getId()));
+        }
     }
 }
