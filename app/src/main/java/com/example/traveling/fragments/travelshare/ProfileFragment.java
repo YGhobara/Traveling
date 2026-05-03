@@ -15,16 +15,21 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.traveling.R;
-import com.example.traveling.activities.MainActivity;
 import com.example.traveling.activities.LandingActivity;
 import com.example.traveling.models.UserProfile;
+import com.example.traveling.models.Group;
+import com.example.traveling.repositories.GroupRepository;
 import com.example.traveling.repositories.UserRepository;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.example.traveling.models.Post;
 import com.example.traveling.repositories.PostRepository;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.traveling.activities.MainActivity;
+import com.example.traveling.adapters.GroupAdapter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,6 +39,7 @@ public class ProfileFragment extends Fragment {
     private FirebaseAuth mAuth;
     private UserRepository userRepository;
     private PostRepository postRepository;
+    private GroupRepository groupRepository;
 
     private TextView textAvatarInitials;
     private TextView textFullName;
@@ -52,6 +58,15 @@ public class ProfileFragment extends Fragment {
     private MaterialButton btnLogout;
     private ImageButton buttonEditProfile;
 
+    private View layoutProfileGroupsSection;
+    private TextView textProfileGroupsStatus;
+    private RecyclerView recyclerProfileGroups;
+    private MaterialButton buttonManageGroups;
+
+    private GroupAdapter profileGroupsAdapter;
+    private int currentPhotosCount = 0;
+    private int currentGroupsCount = 0;
+
     public ProfileFragment() {
         // Required empty public constructor
     }
@@ -66,9 +81,11 @@ public class ProfileFragment extends Fragment {
         mAuth = FirebaseAuth.getInstance();
         userRepository = new UserRepository();
         postRepository = new PostRepository();
+        groupRepository = new GroupRepository();
 
         bindViews(view);
         setupStats(view);
+        setupProfileGroupsRecycler();
         setupActions();
 
         FirebaseUser currentUser = mAuth.getCurrentUser();
@@ -99,6 +116,27 @@ public class ProfileFragment extends Fragment {
         buttonEditProfile = view.findViewById(R.id.buttonEditProfile);
         buttonEditProfileLarge = view.findViewById(R.id.buttonEditProfileLarge);
         btnLogout = view.findViewById(R.id.btn_logout);
+
+        layoutProfileGroupsSection = view.findViewById(R.id.layoutProfileGroupsSection);
+        textProfileGroupsStatus = view.findViewById(R.id.textProfileGroupsStatus);
+        recyclerProfileGroups = view.findViewById(R.id.recyclerProfileGroups);
+        buttonManageGroups = view.findViewById(R.id.buttonManageGroups);
+    }
+
+    private void setupProfileGroupsRecycler() {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        String currentUserId = currentUser != null ? currentUser.getUid() : null;
+
+        profileGroupsAdapter = new GroupAdapter(
+                currentUserId,
+                group -> openGroupDetail(group),
+                group -> {
+                    // User is already member in profile groups list
+                }
+        );
+
+        recyclerProfileGroups.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerProfileGroups.setAdapter(profileGroupsAdapter);
     }
 
     private void setupStats(View view) {
@@ -158,12 +196,54 @@ public class ProfileFragment extends Fragment {
         buttonEditProfile.setOnClickListener(editListener);
         buttonEditProfileLarge.setOnClickListener(editListener);
 
-        tabGroups.setOnClickListener(v -> {
+        tabPhotos.setOnClickListener(v -> showPhotosSection());
+        tabRoutes.setOnClickListener(v -> showRoutesSection());
+        tabGroups.setOnClickListener(v -> showGroupsSection());
+
+        buttonManageGroups.setOnClickListener(v -> {
             if (requireActivity() instanceof MainActivity) {
                 ((MainActivity) requireActivity())
                         .openFragmentWithBackStack(new GroupsFragment());
             }
         });
+    }
+
+    private void showPhotosSection() {
+        setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, true);
+        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
+        setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, false);
+
+        layoutProfileGroupsSection.setVisibility(View.GONE);
+        textProfileSectionPlaceholder.setVisibility(View.VISIBLE);
+        textProfileSectionPlaceholder.setText("Les photos publiées apparaîtront ici.");
+    }
+
+    private void showRoutesSection() {
+        setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, false);
+        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, true);
+        setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, false);
+
+        layoutProfileGroupsSection.setVisibility(View.GONE);
+        textProfileSectionPlaceholder.setVisibility(View.VISIBLE);
+        textProfileSectionPlaceholder.setText("Les trajets sauvegardés apparaîtront ici.");
+    }
+
+    private void showGroupsSection() {
+        setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, false);
+        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
+        setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, true);
+
+        textProfileSectionPlaceholder.setVisibility(View.GONE);
+        layoutProfileGroupsSection.setVisibility(View.VISIBLE);
+    }
+
+    private void openGroupDetail(Group group) {
+        if (group == null || group.getId() == null) return;
+
+        if (requireActivity() instanceof MainActivity) {
+            ((MainActivity) requireActivity())
+                    .openFragmentWithBackStack(GroupDetailFragment.newInstance(group.getId()));
+        }
     }
 
     private void displayGuestProfile() {
@@ -253,6 +333,7 @@ public class ProfileFragment extends Fragment {
                 if (!isAdded()) return;
 
                 int photosCount = posts.size();
+                currentPhotosCount = photosCount;
                 int voyagesCount = countDistinctLocations(posts);
 
                 setStat(statTrips, String.valueOf(voyagesCount), "Voyages");
@@ -261,7 +342,7 @@ public class ProfileFragment extends Fragment {
                 setStat(statFollowers, "0", "Abonnés");
                 setStat(statFollowing, "0", "Abonnements");
 
-                updateTabCounts(photosCount, 0, 0);
+                loadGroupCount(userId, photosCount);
             }
 
             @Override
@@ -271,6 +352,33 @@ public class ProfileFragment extends Fragment {
                 Toast.makeText(requireContext(),
                         "Impossible de charger les statistiques.",
                         Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void loadGroupCount(String userId, int photosCount) {
+        groupRepository.getMyGroups(userId, new GroupRepository.GroupListListener() {
+            @Override
+            public void onSuccess(List<Group> groups) {
+                if (!isAdded()) return;
+
+                int groupsCount = groups == null ? 0 : groups.size();
+                currentGroupsCount = groupsCount;
+                profileGroupsAdapter.submitList(groups);
+
+                if (groupsCount == 0) {
+                    textProfileGroupsStatus.setText("Vous n'avez rejoint aucun groupe pour le moment.");
+                } else {
+                    textProfileGroupsStatus.setText("Vos groupes de voyage");
+                }
+                updateTabCounts(photosCount, 0, groupsCount);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (!isAdded()) return;
+
+                updateTabCounts(photosCount, 0, 0);
             }
         });
     }
