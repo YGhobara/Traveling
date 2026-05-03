@@ -155,6 +155,33 @@ public class PostRepository {
                 .addOnFailureListener(listener::onError);
     }
 
+    public void getPostsByGroup(String groupId, OnPostsLoadedListener listener) {
+        if (groupId == null || groupId.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid group id."));
+            return;
+        }
+
+        db.collection("posts")
+                .whereEqualTo("groupId", groupId)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Post> posts = new ArrayList<>();
+
+                    for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+                        Post post = document.toObject(Post.class);
+
+                        if (post != null) {
+                            post.setId(document.getId());
+                            posts.add(post);
+                        }
+                    }
+
+                    listener.onSuccess(posts);
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
     public void createPost(Post post, final OnPostActionListener listener) {
         if (post == null) {
             listener.onError(new IllegalArgumentException("Post cannot be null."));

@@ -121,6 +121,14 @@
             android:textColor="#6B7280"
             android:textSize="14sp" />
 
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerGroupPosts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:nestedScrollingEnabled="false"
+            android:visibility="gone" />
+
     </LinearLayout>
 
 </ScrollView>
