@@ -27,6 +27,8 @@ import com.example.traveling.models.Post;
 import com.example.traveling.repositories.PostRepository;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.GridLayoutManager;
+import com.example.traveling.adapters.PostGridAdapter;
 
 import com.example.traveling.activities.MainActivity;
 import com.example.traveling.adapters.GroupAdapter;
@@ -61,7 +63,11 @@ public class ProfileFragment extends Fragment {
     private View layoutProfileGroupsSection;
     private TextView textProfileGroupsStatus;
     private RecyclerView recyclerProfileGroups;
+    private RecyclerView recyclerProfilePhotos;
+    private PostGridAdapter profilePhotosAdapter;
     private MaterialButton buttonManageGroups;
+
+    private List<Post> currentUserPosts;
 
     private GroupAdapter profileGroupsAdapter;
     private int currentPhotosCount = 0;
@@ -86,6 +92,7 @@ public class ProfileFragment extends Fragment {
         bindViews(view);
         setupStats(view);
         setupProfileGroupsRecycler();
+        setupProfilePhotosRecycler();
         setupActions();
 
         FirebaseUser currentUser = mAuth.getCurrentUser();
@@ -121,6 +128,7 @@ public class ProfileFragment extends Fragment {
         textProfileGroupsStatus = view.findViewById(R.id.textProfileGroupsStatus);
         recyclerProfileGroups = view.findViewById(R.id.recyclerProfileGroups);
         buttonManageGroups = view.findViewById(R.id.buttonManageGroups);
+        recyclerProfilePhotos = view.findViewById(R.id.recyclerProfilePhotos);
     }
 
     private void setupProfileGroupsRecycler() {
@@ -137,6 +145,13 @@ public class ProfileFragment extends Fragment {
 
         recyclerProfileGroups.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerProfileGroups.setAdapter(profileGroupsAdapter);
+    }
+
+    private void setupProfilePhotosRecycler() {
+        profilePhotosAdapter = new PostGridAdapter(post -> openPostDetail(post));
+
+        recyclerProfilePhotos.setLayoutManager(new GridLayoutManager(requireContext(), 2));
+        recyclerProfilePhotos.setAdapter(profilePhotosAdapter);
     }
 
     private void setupStats(View view) {
@@ -214,8 +229,15 @@ public class ProfileFragment extends Fragment {
         setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, false);
 
         layoutProfileGroupsSection.setVisibility(View.GONE);
-        textProfileSectionPlaceholder.setVisibility(View.VISIBLE);
-        textProfileSectionPlaceholder.setText("Les photos publiées apparaîtront ici.");
+
+        if (currentUserPosts == null || currentUserPosts.isEmpty()) {
+            recyclerProfilePhotos.setVisibility(View.GONE);
+            textProfileSectionPlaceholder.setVisibility(View.VISIBLE);
+            textProfileSectionPlaceholder.setText("Les photos publiées apparaîtront ici.");
+        } else {
+            textProfileSectionPlaceholder.setVisibility(View.GONE);
+            recyclerProfilePhotos.setVisibility(View.VISIBLE);
+        }
     }
 
     private void showRoutesSection() {
@@ -224,6 +246,7 @@ public class ProfileFragment extends Fragment {
         setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, false);
 
         layoutProfileGroupsSection.setVisibility(View.GONE);
+        recyclerProfilePhotos.setVisibility(View.GONE);
         textProfileSectionPlaceholder.setVisibility(View.VISIBLE);
         textProfileSectionPlaceholder.setText("Les trajets sauvegardés apparaîtront ici.");
     }
@@ -234,6 +257,7 @@ public class ProfileFragment extends Fragment {
         setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, true);
 
         textProfileSectionPlaceholder.setVisibility(View.GONE);
+        recyclerProfilePhotos.setVisibility(View.GONE);
         layoutProfileGroupsSection.setVisibility(View.VISIBLE);
     }
 
@@ -243,6 +267,31 @@ public class ProfileFragment extends Fragment {
         if (requireActivity() instanceof MainActivity) {
             ((MainActivity) requireActivity())
                     .openFragmentWithBackStack(GroupDetailFragment.newInstance(group.getId()));
+        }
+    }
+
+    private void openPostDetail(Post post) {
+        if (post == null || post.getId() == null) return;
+
+        PhotoDetailFragment fragment = new PhotoDetailFragment();
+
+        Bundle args = new Bundle();
+        args.putString("postId", post.getId());
+        args.putString("authorName", post.getAuthorName());
+        args.putString("locationName", post.getLocationName());
+        args.putString("placeType", post.getPlaceType());
+        args.putString("caption", post.getCaption());
+        args.putInt("commentCount", post.getCommentCount());
+        args.putDouble("latitude", post.getLatitude());
+        args.putDouble("longitude", post.getLongitude());
+        args.putString("photonPlaceId", post.getPhotonPlaceId());
+        args.putString("imageUrl", post.getImageUrl());
+        args.putInt("likeCount", post.getLikeCount());
+        args.putLong("createdAt", post.getCreatedAt());
+        fragment.setArguments(args);
+
+        if (requireActivity() instanceof MainActivity) {
+            ((MainActivity) requireActivity()).openFragmentWithBackStack(fragment);
         }
     }
 
@@ -331,6 +380,8 @@ public class ProfileFragment extends Fragment {
             @Override
             public void onSuccess(List<Post> posts) {
                 if (!isAdded()) return;
+                currentUserPosts = posts;
+                profilePhotosAdapter.submitList(posts);
 
                 int photosCount = posts.size();
                 currentPhotosCount = photosCount;
@@ -343,6 +394,7 @@ public class ProfileFragment extends Fragment {
                 setStat(statFollowing, "0", "Abonnements");
 
                 loadGroupCount(userId, photosCount);
+                showPhotosSection();
             }
 
             @Override
