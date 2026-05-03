@@ -154,6 +154,9 @@ public class UserProfileFragment extends Fragment {
 
         recyclerProfilePhotos.setLayoutManager(new GridLayoutManager(requireContext(), 2));
         recyclerProfilePhotos.setAdapter(profilePhotosAdapter);
+
+        recyclerProfilePhotos.setNestedScrollingEnabled(false);
+        recyclerProfilePhotos.setHasFixedSize(false);
     }
 
     private void setupActions() {
