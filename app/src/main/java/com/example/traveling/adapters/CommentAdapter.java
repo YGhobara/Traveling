@@ -4,7 +4,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-
+import android.graphics.Color;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -16,7 +16,19 @@ import java.util.List;
 
 public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentViewHolder> {
 
+    public interface OnCommentAuthorClickListener {
+        void onCommentAuthorClick(Comment comment);
+    }
+
+    private OnCommentAuthorClickListener authorClickListener;
     private List<Comment> comments = new ArrayList<>();
+
+    public CommentAdapter() {
+    }
+
+    public CommentAdapter(OnCommentAuthorClickListener authorClickListener) {
+        this.authorClickListener = authorClickListener;
+    }
 
     public void setComments(List<Comment> comments) {
         this.comments = comments;
@@ -36,6 +48,13 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
         Comment comment = comments.get(position);
         holder.textCommentDate.setText("· " + formatRelativeTime(comment.getCreatedAt()));
         holder.textCommentAuthor.setText(comment.getAuthorName());
+        holder.textCommentAuthor.setTextColor(Color.parseColor("#1565C0"));
+
+        holder.textCommentAuthor.setOnClickListener(v -> {
+            if (authorClickListener != null) {
+                authorClickListener.onCommentAuthorClick(comment);
+            }
+        });
         holder.textCommentBody.setText(comment.getText());
     }
 

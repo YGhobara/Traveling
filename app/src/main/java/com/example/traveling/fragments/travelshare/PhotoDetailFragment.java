@@ -132,7 +132,7 @@ public class PhotoDetailFragment extends Fragment {
         reportRepository = new ReportRepository();
         firebaseAuth = FirebaseAuth.getInstance();
 
-        commentAdapter = new CommentAdapter();
+        commentAdapter = new CommentAdapter(comment -> openCommentAuthorProfile(comment));
         recyclerViewComments.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerViewComments.setAdapter(commentAdapter);
 
@@ -230,6 +230,30 @@ public class PhotoDetailFragment extends Fragment {
 
         FirebaseUser currentUser = firebaseAuth.getCurrentUser();
         String authorId = currentPost.getUserId();
+
+        if (currentUser != null && authorId.equals(currentUser.getUid())) {
+            if (requireActivity() instanceof MainActivity) {
+                ((MainActivity) requireActivity())
+                        .openFragmentWithBackStack(new ProfileFragment());
+            }
+        } else {
+            if (requireActivity() instanceof MainActivity) {
+                ((MainActivity) requireActivity())
+                        .openFragmentWithBackStack(UserProfileFragment.newInstance(authorId));
+            }
+        }
+    }
+
+    private void openCommentAuthorProfile(Comment comment) {
+        if (comment == null || TextUtils.isEmpty(comment.getUserId())) {
+            Toast.makeText(requireContext(),
+                    "Profil utilisateur introuvable.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+        String authorId = comment.getUserId();
 
         if (currentUser != null && authorId.equals(currentUser.getUid())) {
             if (requireActivity() instanceof MainActivity) {
