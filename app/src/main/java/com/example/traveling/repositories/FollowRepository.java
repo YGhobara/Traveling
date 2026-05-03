@@ -19,6 +19,11 @@ public class FollowRepository {
         void onError(Exception e);
     }
 
+    public interface PlaceTypesListener {
+        void onSuccess(java.util.List<String> placeTypes);
+        void onError(Exception e);
+    }
+
     private final FirebaseFirestore db;
 
     public FollowRepository() {
@@ -130,6 +135,83 @@ public class FollowRepository {
 
         batch.commit()
                 .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
+
+    public void isFollowingPlaceType(String userId, String placeType, FollowCheckListener listener) {
+        if (userId == null || placeType == null || placeType.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid place type."));
+            return;
+        }
+
+        db.collection("users")
+                .document(userId)
+                .collection("followedPlaceTypes")
+                .document(placeType)
+                .get()
+                .addOnSuccessListener(documentSnapshot ->
+                        listener.onResult(documentSnapshot.exists())
+                )
+                .addOnFailureListener(listener::onError);
+    }
+
+    public void followPlaceType(String userId, String placeType, FollowActionListener listener) {
+        if (userId == null || placeType == null || placeType.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid place type."));
+            return;
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("placeType", placeType);
+        data.put("createdAt", System.currentTimeMillis());
+
+        db.collection("users")
+                .document(userId)
+                .collection("followedPlaceTypes")
+                .document(placeType)
+                .set(data)
+                .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
+
+    public void unfollowPlaceType(String userId, String placeType, FollowActionListener listener) {
+        if (userId == null || placeType == null || placeType.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid place type."));
+            return;
+        }
+
+        db.collection("users")
+                .document(userId)
+                .collection("followedPlaceTypes")
+                .document(placeType)
+                .delete()
+                .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
+
+    public void getFollowedPlaceTypes(String userId, PlaceTypesListener listener) {
+        if (userId == null) {
+            listener.onError(new IllegalArgumentException("Invalid user id."));
+            return;
+        }
+
+        db.collection("users")
+                .document(userId)
+                .collection("followedPlaceTypes")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    java.util.List<String> placeTypes = new java.util.ArrayList<>();
+
+                    for (com.google.firebase.firestore.DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+                        String placeType = document.getString("placeType");
+
+                        if (placeType != null && !placeType.trim().isEmpty()) {
+                            placeTypes.add(placeType);
+                        }
+                    }
+
+                    listener.onSuccess(placeTypes);
+                })
                 .addOnFailureListener(listener::onError);
     }
 }

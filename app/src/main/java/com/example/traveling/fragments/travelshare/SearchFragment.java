@@ -40,6 +40,10 @@ import org.osmdroid.views.overlay.Marker;
 
 import com.example.traveling.models.LocationSuggestion;
 import com.example.traveling.repositories.PhotonRepository;
+import com.example.traveling.repositories.FollowRepository;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import android.widget.ArrayAdapter;
 
@@ -55,9 +59,13 @@ public class SearchFragment extends Fragment {
     private TextView tabPublications;
     private TextView tabMap;
     private MapView mapSearch;
+    private MaterialButton buttonFollowPlaceType;
+    private boolean isFollowingSelectedPlaceType = false;
     private boolean isMapSelected = false;
 
     private PostRepository postRepository;
+    private FollowRepository followRepository;
+    private FirebaseAuth firebaseAuth;
     private PostGridAdapter postGridAdapter;
 
     private final List<Post> allPosts = new ArrayList<>();
@@ -100,6 +108,8 @@ public class SearchFragment extends Fragment {
 
         postRepository = new PostRepository();
         photonRepository = new PhotonRepository();
+        followRepository = new FollowRepository();
+        firebaseAuth = FirebaseAuth.getInstance();
 
         bindViews(view);
         setupRecycler();
@@ -107,6 +117,7 @@ public class SearchFragment extends Fragment {
         setupTabs();
         setupSearchInput();
         setupPlaceTypeChips();
+        setupFollowPlaceTypeButton();
         setupFilterButton();
         loadFirstPage();
 
@@ -122,6 +133,12 @@ public class SearchFragment extends Fragment {
         chipGroupPlaceTypes = view.findViewById(R.id.chipGroupPlaceTypes);
         buttonFilters = view.findViewById(R.id.buttonFilters);
         mapSearch = view.findViewById(R.id.mapSearch);
+        buttonFollowPlaceType = view.findViewById(R.id.buttonFollowPlaceType);
+    }
+
+    private void setupFollowPlaceTypeButton() {
+        buttonFollowPlaceType.setOnClickListener(v -> toggleFollowSelectedPlaceType());
+        updateFollowPlaceTypeButtonVisibility();
     }
 
     private void setupMap() {
@@ -515,6 +532,7 @@ public class SearchFragment extends Fragment {
             if (checkedIds.isEmpty()) {
                 selectedPlaceType = "Tous";
                 loadFirstPage();
+                updateFollowPlaceTypeButtonVisibility();
                 return;
             }
 
@@ -545,7 +563,137 @@ public class SearchFragment extends Fragment {
             }
 
             loadFirstPage();
+            updateFollowPlaceTypeButtonVisibility();
         });
+    }
+
+    private void updateFollowPlaceTypeButtonVisibility() {
+        if ("Tous".equals(selectedPlaceType)) {
+            buttonFollowPlaceType.setVisibility(View.GONE);
+            return;
+        }
+
+        buttonFollowPlaceType.setVisibility(View.VISIBLE);
+
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        if (currentUser == null) {
+            buttonFollowPlaceType.setText("Se connecter pour suivre " + selectedPlaceType);
+            buttonFollowPlaceType.setEnabled(false);
+            return;
+        }
+
+        buttonFollowPlaceType.setEnabled(false);
+        buttonFollowPlaceType.setText("Chargement...");
+
+        followRepository.isFollowingPlaceType(
+                currentUser.getUid(),
+                selectedPlaceType,
+                new FollowRepository.FollowCheckListener() {
+                    @Override
+                    public void onResult(boolean isFollowing) {
+                        if (!isAdded()) return;
+
+                        isFollowingSelectedPlaceType = isFollowing;
+                        updateFollowPlaceTypeButtonText();
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        if (!isAdded()) return;
+
+                        isFollowingSelectedPlaceType = false;
+                        updateFollowPlaceTypeButtonText();
+                    }
+                }
+        );
+    }
+
+    private void updateFollowPlaceTypeButtonText() {
+        buttonFollowPlaceType.setEnabled(true);
+
+        if (isFollowingSelectedPlaceType) {
+            buttonFollowPlaceType.setText("Suivi : " + selectedPlaceType);
+        } else {
+            buttonFollowPlaceType.setText("Suivre : " + selectedPlaceType);
+        }
+    }
+
+    private void toggleFollowSelectedPlaceType() {
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    "Connectez-vous pour suivre un type de lieu.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if ("Tous".equals(selectedPlaceType) || TextUtils.isEmpty(selectedPlaceType)) {
+            return;
+        }
+
+        buttonFollowPlaceType.setEnabled(false);
+
+        if (isFollowingSelectedPlaceType) {
+            followRepository.unfollowPlaceType(
+                    currentUser.getUid(),
+                    selectedPlaceType,
+                    new FollowRepository.FollowActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            if (!isAdded()) return;
+
+                            isFollowingSelectedPlaceType = false;
+                            updateFollowPlaceTypeButtonText();
+
+                            Toast.makeText(requireContext(),
+                                    "Type retiré des abonnements.",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            if (!isAdded()) return;
+
+                            updateFollowPlaceTypeButtonText();
+
+                            Toast.makeText(requireContext(),
+                                    "Erreur : " + e.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }
+            );
+        } else {
+            followRepository.followPlaceType(
+                    currentUser.getUid(),
+                    selectedPlaceType,
+                    new FollowRepository.FollowActionListener() {
+                        @Override
+                        public void onSuccess() {
+                            if (!isAdded()) return;
+
+                            isFollowingSelectedPlaceType = true;
+                            updateFollowPlaceTypeButtonText();
+
+                            Toast.makeText(requireContext(),
+                                    "Type suivi.",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            if (!isAdded()) return;
+
+                            updateFollowPlaceTypeButtonText();
+
+                            Toast.makeText(requireContext(),
+                                    "Erreur : " + e.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }
+            );
+        }
     }
 
     private void applyLocalFilters() {
