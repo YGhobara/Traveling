@@ -62,9 +62,8 @@ public class FeedFragment extends Fragment {
 
         buttonNotifications = view.findViewById(R.id.buttonNotifications);
         buttonNotifications.setOnClickListener(v ->
-                Toast.makeText(requireContext(),
-                        "Notifications à venir.",
-                        Toast.LENGTH_SHORT).show()
+                ((com.example.traveling.activities.MainActivity) requireActivity())
+                        .openFragmentWithBackStack(new NotificationsFragment())
         );
         viewNotificationDot = view.findViewById(R.id.viewNotificationDot);
 
