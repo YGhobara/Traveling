@@ -15,6 +15,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.traveling.R;
+import com.example.traveling.activities.MainActivity;
 import com.example.traveling.activities.LandingActivity;
 import com.example.traveling.models.UserProfile;
 import com.example.traveling.repositories.UserRepository;
@@ -156,6 +157,13 @@ public class ProfileFragment extends Fragment {
 
         buttonEditProfile.setOnClickListener(editListener);
         buttonEditProfileLarge.setOnClickListener(editListener);
+
+        tabGroups.setOnClickListener(v -> {
+            if (requireActivity() instanceof MainActivity) {
+                ((MainActivity) requireActivity())
+                        .openFragmentWithBackStack(new GroupsFragment());
+            }
+        });
     }
 
     private void displayGuestProfile() {
