@@ -31,14 +31,27 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         void onLikeClick(Post post);
     }
 
+    public interface OnAuthorClickListener {
+        void onAuthorClick(Post post);
+    }
+
     private List<Post> posts = new ArrayList<>();
     private final OnPostClickListener postClickListener;
     private final OnLikeClickListener likeClickListener;
+    private final OnAuthorClickListener authorClickListener;
     private String currentUserId;
 
-    public PostAdapter(OnPostClickListener postClickListener, OnLikeClickListener likeClickListener) {
+    public PostAdapter(OnPostClickListener postClickListener,
+                       OnLikeClickListener likeClickListener) {
+        this(postClickListener, likeClickListener, null);
+    }
+
+    public PostAdapter(OnPostClickListener postClickListener,
+                       OnLikeClickListener likeClickListener,
+                       OnAuthorClickListener authorClickListener) {
         this.postClickListener = postClickListener;
         this.likeClickListener = likeClickListener;
+        this.authorClickListener = authorClickListener;
     }
 
     public void setCurrentUserId(String currentUserId) {
@@ -66,6 +79,12 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
 
 
         holder.textAuthorName.setText(post.getAuthorName());
+        holder.textAuthorName.setOnClickListener(v -> {
+            if (authorClickListener != null) {
+                authorClickListener.onAuthorClick(post);
+            }
+        });
+        holder.textAuthorName.setTextColor(Color.parseColor("#1565C0"));
         holder.textLocationName.setText(post.getLocationName());
         holder.textCaption.setText(post.getCaption());
         holder.textLikeCount.setText(String.valueOf(post.getLikeCount()));

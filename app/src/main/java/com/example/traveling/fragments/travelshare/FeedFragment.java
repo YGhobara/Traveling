@@ -61,7 +61,8 @@ public class FeedFragment extends Fragment {
 
         postAdapter = new PostAdapter(
                 post -> openPostDetail(post),
-                post -> toggleLike(post)
+                post -> toggleLike(post),
+                post -> openUserProfile(post.getUserId())
         );
         postAdapter.setCurrentUserId(currentUserId);
         recyclerViewPosts.setAdapter(postAdapter);
@@ -124,6 +125,25 @@ public class FeedFragment extends Fragment {
 
         ((com.example.traveling.activities.MainActivity) requireActivity())
                 .openFragmentWithBackStack(fragment);
+    }
+
+    private void openUserProfile(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            Toast.makeText(requireContext(),
+                    "Profil utilisateur introuvable.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        if (currentUser != null && userId.equals(currentUser.getUid())) {
+            ((com.example.traveling.activities.MainActivity) requireActivity())
+                    .openFragmentWithBackStack(new ProfileFragment());
+        } else {
+            ((com.example.traveling.activities.MainActivity) requireActivity())
+                    .openFragmentWithBackStack(UserProfileFragment.newInstance(userId));
+        }
     }
 
     private void toggleLike(Post post) {
