@@ -61,6 +61,9 @@ public class UserProfileFragment extends Fragment {
     private PostGridAdapter profilePhotosAdapter;
 
     private int currentPhotosCount = 0;
+    private int currentFollowersCount = 0;
+    private int currentFollowingCount = 0;
+
     private boolean isFollowing = false;
     private String targetDisplayName = "Voyageur";
 
@@ -262,6 +265,8 @@ public class UserProfileFragment extends Fragment {
                     if (!isAdded()) return;
 
                     isFollowing = false;
+                    currentFollowersCount = Math.max(0, currentFollowersCount - 1);
+                    setStat(statFollowers, String.valueOf(currentFollowersCount), "Abonnés");
                     updateFollowButton();
                 }
 
@@ -289,6 +294,8 @@ public class UserProfileFragment extends Fragment {
                             if (!isAdded()) return;
 
                             isFollowing = true;
+                            currentFollowersCount++;
+                            setStat(statFollowers, String.valueOf(currentFollowersCount), "Abonnés");
                             updateFollowButton();
                         }
 
@@ -322,8 +329,11 @@ public class UserProfileFragment extends Fragment {
         textFullName.setText(!TextUtils.isEmpty(fullName) ? fullName : "Voyageur");
         textUsername.setText(!TextUtils.isEmpty(username) ? "@" + username : "@voyageur");
         textAvatarInitials.setText(makeInitials(firstName, lastName, username, email));
-        setStat(statFollowers, String.valueOf(userProfile.getFollowersCount()), "Abonnés");
-        setStat(statFollowing, String.valueOf(userProfile.getFollowingCount()), "Abonnements");
+        currentFollowersCount = userProfile.getFollowersCount();
+        currentFollowingCount = userProfile.getFollowingCount();
+
+        setStat(statFollowers, String.valueOf(currentFollowersCount), "Abonnés");
+        setStat(statFollowing, String.valueOf(currentFollowingCount), "Abonnements");
         checkFollowState();
 
     }
