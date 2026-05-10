@@ -87,6 +87,34 @@ public class GroupRepository {
                 .addOnFailureListener(listener::onError);
     }
 
+    public void getPublicGroupsByUser(String userId, GroupListListener listener) {
+        if (userId == null || userId.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid user id."));
+            return;
+        }
+
+        db.collection("groups")
+                .whereArrayContains("memberIds", userId)
+                .whereEqualTo("publicGroup", true)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Group> groups = new ArrayList<>();
+
+                    for (DocumentSnapshot doc : queryDocumentSnapshots.getDocuments()) {
+                        Group group = doc.toObject(Group.class);
+
+                        if (group != null) {
+                            group.setId(doc.getId());
+                            groups.add(group);
+                        }
+                    }
+
+                    listener.onSuccess(groups);
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
     public void getGroupById(String groupId, GroupListener listener) {
         db.collection("groups")
                 .document(groupId)

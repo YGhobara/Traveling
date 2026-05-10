@@ -16,7 +16,11 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
+import com.example.traveling.adapters.GroupAdapter;
+import com.example.traveling.models.Group;
+import com.example.traveling.repositories.GroupRepository;
 import com.example.traveling.R;
 import com.example.traveling.activities.MainActivity;
 import com.example.traveling.adapters.PostGridAdapter;
@@ -35,6 +39,7 @@ public class UserProfileFragment extends Fragment {
     private static final String ARG_USER_ID = "userId";
 
     private UserRepository userRepository;
+    private GroupRepository groupRepository;
     private PostRepository postRepository;
     private FollowRepository followRepository;
     private FirebaseAuth firebaseAuth;
@@ -46,7 +51,10 @@ public class UserProfileFragment extends Fragment {
     private TextView textFullName;
     private TextView textUsername;
     private TextView textProfileSectionPlaceholder;
-
+    private View layoutProfileGroupsSection;
+    private TextView textProfileGroupsStatus;
+    private RecyclerView recyclerProfileGroups;
+    private GroupAdapter profileGroupsAdapter;
     private View statTrips;
     private View statFollowers;
     private View statFollowing;
@@ -63,6 +71,7 @@ public class UserProfileFragment extends Fragment {
     private int currentPhotosCount = 0;
     private int currentFollowersCount = 0;
     private int currentFollowingCount = 0;
+    private int currentGroupsCount = 0;
 
     private boolean isFollowing = false;
     private String targetDisplayName = "Voyageur";
@@ -90,6 +99,7 @@ public class UserProfileFragment extends Fragment {
 
         userRepository = new UserRepository();
         postRepository = new PostRepository();
+        groupRepository = new GroupRepository();
         followRepository = new FollowRepository();
         firebaseAuth = FirebaseAuth.getInstance();
 
@@ -100,6 +110,7 @@ public class UserProfileFragment extends Fragment {
         bindViews(view);
         setupStats();
         setupPhotosRecycler();
+        setupGroupsRecycler();
         setupActions();
 
         if (TextUtils.isEmpty(targetUserId)) {
@@ -109,10 +120,12 @@ public class UserProfileFragment extends Fragment {
         } else {
             loadUserProfile();
             loadUserPosts();
+            loadPublicGroups();
         }
 
         return view;
     }
+
 
     private void bindViews(View view) {
         buttonBack = view.findViewById(R.id.buttonBack);
@@ -133,9 +146,17 @@ public class UserProfileFragment extends Fragment {
         buttonFollowUser = view.findViewById(R.id.buttonFollowUser);
         recyclerProfilePhotos = view.findViewById(R.id.recyclerProfilePhotos);
 
-        View layoutProfileGroupsSection = view.findViewById(R.id.layoutProfileGroupsSection);
+        layoutProfileGroupsSection = view.findViewById(R.id.layoutProfileGroupsSection);
+        textProfileGroupsStatus = view.findViewById(R.id.textProfileGroupsStatus);
+        recyclerProfileGroups = view.findViewById(R.id.recyclerProfileGroups);
+
         if (layoutProfileGroupsSection != null) {
             layoutProfileGroupsSection.setVisibility(View.GONE);
+        }
+
+        MaterialButton buttonManageGroups = view.findViewById(R.id.buttonManageGroups);
+        if (buttonManageGroups != null) {
+            buttonManageGroups.setVisibility(View.GONE);
         }
     }
 
@@ -159,6 +180,19 @@ public class UserProfileFragment extends Fragment {
         recyclerProfilePhotos.setHasFixedSize(false);
     }
 
+    private void setupGroupsRecycler() {
+        profileGroupsAdapter = new GroupAdapter(
+                targetUserId,
+                group -> openGroupDetail(group),
+                group -> {
+                    // Public profile: joining from here not needed.
+                }
+        );
+
+        recyclerProfileGroups.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerProfileGroups.setAdapter(profileGroupsAdapter);
+    }
+
     private void setupActions() {
         buttonBack.setOnClickListener(v ->
                 requireActivity().getSupportFragmentManager().popBackStack()
@@ -174,11 +208,17 @@ public class UserProfileFragment extends Fragment {
                         Toast.LENGTH_SHORT).show()
         );
 
-        tabGroups.setOnClickListener(v ->
-                Toast.makeText(requireContext(),
-                        "Groupes publics à venir.",
-                        Toast.LENGTH_SHORT).show()
-        );
+        tabGroups.setOnClickListener(v -> showGroupsSection());
+    }
+
+    private void showGroupsSection() {
+        setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, false);
+        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
+        setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, true);
+
+        textProfileSectionPlaceholder.setVisibility(View.GONE);
+        recyclerProfilePhotos.setVisibility(View.GONE);
+        layoutProfileGroupsSection.setVisibility(View.VISIBLE);
     }
 
     private void loadUserProfile() {
@@ -372,7 +412,37 @@ public class UserProfileFragment extends Fragment {
         });
     }
 
+    private void loadPublicGroups() {
+        groupRepository.getPublicGroupsByUser(targetUserId, new GroupRepository.GroupListListener() {
+            @Override
+            public void onSuccess(List<Group> groups) {
+                if (!isAdded()) return;
+
+                currentGroupsCount = groups == null ? 0 : groups.size();
+                profileGroupsAdapter.submitList(groups);
+
+                setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, false);
+
+                if (currentGroupsCount == 0) {
+                    textProfileGroupsStatus.setText("Aucun groupe public à afficher.");
+                } else {
+                    textProfileGroupsStatus.setText("Groupes publics");
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (!isAdded()) return;
+
+                currentGroupsCount = 0;
+                setTab(tabGroups, "Groupes", 0, R.drawable.ic_person_outline, false);
+                textProfileGroupsStatus.setText("Impossible de charger les groupes publics.");
+            }
+        });
+    }
+
     private void showPhotosSection() {
+        layoutProfileGroupsSection.setVisibility(View.GONE);
         setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, true);
         setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
         setTab(tabGroups, "Groupes", 0, R.drawable.ic_person_outline, false);
@@ -409,6 +479,15 @@ public class UserProfileFragment extends Fragment {
 
         if (requireActivity() instanceof MainActivity) {
             ((MainActivity) requireActivity()).openFragmentWithBackStack(fragment);
+        }
+    }
+
+    private void openGroupDetail(Group group) {
+        if (group == null || group.getId() == null) return;
+
+        if (requireActivity() instanceof MainActivity) {
+            ((MainActivity) requireActivity())
+                    .openFragmentWithBackStack(GroupDetailFragment.newInstance(group.getId()));
         }
     }
 
