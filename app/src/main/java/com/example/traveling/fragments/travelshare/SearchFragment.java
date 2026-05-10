@@ -776,11 +776,13 @@ public class SearchFragment extends Fragment {
     private void selectPublicationsTab() {
         isMapSelected = false;
 
-        tabPublications.setTextColor(getResources().getColor(R.color.travel_primary, null));
+        tabPublications.setTextColor(android.graphics.Color.WHITE);
         tabPublications.setTypeface(null, android.graphics.Typeface.BOLD);
+        tabPublications.setBackgroundResource(R.drawable.bg_segment_selected);
 
         tabMap.setTextColor(android.graphics.Color.parseColor("#6B7280"));
         tabMap.setTypeface(null, android.graphics.Typeface.NORMAL);
+        tabMap.setBackgroundResource(R.drawable.bg_segment_unselected);
 
         recyclerSearchPosts.setVisibility(View.VISIBLE);
         mapSearch.setVisibility(View.GONE);
@@ -832,11 +834,13 @@ public class SearchFragment extends Fragment {
     private void selectMapTab() {
         isMapSelected = true;
 
-        tabMap.setTextColor(getResources().getColor(R.color.travel_primary, null));
+        tabMap.setTextColor(android.graphics.Color.WHITE);
         tabMap.setTypeface(null, android.graphics.Typeface.BOLD);
+        tabMap.setBackgroundResource(R.drawable.bg_segment_selected);
 
         tabPublications.setTextColor(android.graphics.Color.parseColor("#6B7280"));
         tabPublications.setTypeface(null, android.graphics.Typeface.NORMAL);
+        tabPublications.setBackgroundResource(R.drawable.bg_segment_unselected);
 
         recyclerSearchPosts.setVisibility(View.GONE);
         mapSearch.setVisibility(View.VISIBLE);
