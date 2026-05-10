@@ -27,7 +27,8 @@ import com.example.traveling.repositories.FollowRepository;
 import com.example.traveling.models.Group;
 import com.example.traveling.repositories.GroupRepository;
 import com.google.android.material.textfield.TextInputLayout;
-
+import com.google.android.material.card.MaterialCardView;
+import android.widget.LinearLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
@@ -73,7 +74,8 @@ public class NewPostFragment extends Fragment {
     private Runnable pendingLocationSearch;
     private boolean isSettingLocationFromSuggestion = false;
     private FirebaseAuth auth;
-
+    private MaterialCardView cardImagePicker;
+    private LinearLayout layoutImagePlaceholder;
     private ImageView imagePreview;
     private MaterialButton buttonChooseImage;
     private Uri selectedImageUri;
@@ -105,6 +107,10 @@ public class NewPostFragment extends Fragment {
                     if (uri != null) {
                         selectedImageUri = uri;
                         imagePreview.setImageURI(uri);
+
+                        if (layoutImagePlaceholder != null) {
+                            layoutImagePlaceholder.setVisibility(View.GONE);
+                        }
                     }
                 }
         );
@@ -129,6 +135,8 @@ public class NewPostFragment extends Fragment {
         switchPublic = view.findViewById(R.id.switchPublic);
         buttonPublish = view.findViewById(R.id.buttonPublish);
         imagePreview = view.findViewById(R.id.imagePreview);
+        cardImagePicker = view.findViewById(R.id.cardImagePicker);
+        layoutImagePlaceholder = view.findViewById(R.id.layoutImagePlaceholder);
         buttonChooseImage = view.findViewById(R.id.buttonChooseImage);
         dropdownPlaceType = view.findViewById(R.id.dropdownPlaceType);
         switchShareToGroup = view.findViewById(R.id.switchShareToGroup);
@@ -148,9 +156,11 @@ public class NewPostFragment extends Fragment {
         auth = FirebaseAuth.getInstance();
 
         buttonPublish.setOnClickListener(v -> publishPost());
-        buttonChooseImage.setOnClickListener(v ->
-                imagePickerLauncher.launch("image/*")
-        );
+        View.OnClickListener chooseImageListener = v ->
+                imagePickerLauncher.launch("image/*");
+
+        buttonChooseImage.setOnClickListener(chooseImageListener);
+        cardImagePicker.setOnClickListener(chooseImageListener);
     }
 
     private void setupPlaceTypeDropdown() {
