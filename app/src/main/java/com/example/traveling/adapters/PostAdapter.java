@@ -85,7 +85,13 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             }
         });
         holder.textAuthorName.setTextColor(Color.parseColor("#1565C0"));
-        holder.textLocationName.setText(post.getLocationName());
+        holder.textLocationName.setText(
+                !TextUtils.isEmpty(post.getLocationName())
+                        ? post.getLocationName()
+                        : "Lieu inconnu"
+        );
+
+        holder.textPostDate.setText(formatRelativeTime(post.getCreatedAt()));
         holder.textCaption.setText(post.getCaption());
         holder.textLikeCount.setText(String.valueOf(post.getLikeCount()));
         holder.textCommentCount.setText(String.valueOf(post.getCommentCount()));
@@ -158,9 +164,9 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
     }
 
     static class PostViewHolder extends RecyclerView.ViewHolder {
-
-        TextView textAuthorName;
         TextView textLocationName;
+        TextView textPostDate;
+        TextView textAuthorName;
         TextView textPlaceType;
         TextView textCaption;
         TextView textLikeCount;
@@ -173,7 +179,6 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             super(itemView);
 
             textAuthorName = itemView.findViewById(R.id.textAuthorName);
-            textLocationName = itemView.findViewById(R.id.textLocationName);
             textPlaceType = itemView.findViewById(R.id.textPlaceType);
             textCaption = itemView.findViewById(R.id.textCaption);
             textLikeCount = itemView.findViewById(R.id.textLikeCount);
@@ -181,6 +186,37 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             imagePost = itemView.findViewById(R.id.imagePost);
             buttonLike = itemView.findViewById(R.id.buttonLike);
             buttonComment = itemView.findViewById(R.id.buttonComment);
+            textLocationName = itemView.findViewById(R.id.textLocationName);
+            textPostDate = itemView.findViewById(R.id.textPostDate);
+        }
+    }
+
+    private String formatRelativeTime(long timestamp) {
+        if (timestamp <= 0) {
+            return "date inconnue";
+        }
+
+        long now = System.currentTimeMillis();
+        long diff = now - timestamp;
+
+        long minute = 60 * 1000;
+        long hour = 60 * minute;
+        long day = 24 * hour;
+        long month = 30 * day;
+        long year = 365 * day;
+
+        if (diff < minute) {
+            return "à l’instant";
+        } else if (diff < hour) {
+            return "il y a " + (diff / minute) + " min";
+        } else if (diff < day) {
+            return "il y a " + (diff / hour) + " h";
+        } else if (diff < month) {
+            return "il y a " + (diff / day) + " j";
+        } else if (diff < year) {
+            return "il y a " + (diff / month) + " mois";
+        } else {
+            return "il y a " + (diff / year) + " an(s)";
         }
     }
 }
