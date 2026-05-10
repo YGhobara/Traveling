@@ -13,7 +13,8 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-
+import androidx.appcompat.app.AlertDialog;
+import com.google.android.material.textfield.TextInputEditText;
 import com.example.traveling.R;
 import com.example.traveling.activities.LandingActivity;
 import com.example.traveling.models.UserProfile;
@@ -70,6 +71,7 @@ public class ProfileFragment extends Fragment {
     private List<Post> currentUserPosts;
 
     private GroupAdapter profileGroupsAdapter;
+    private UserProfile currentUserProfile;
     private int currentPhotosCount = 0;
     private int currentGroupsCount = 0;
 
@@ -203,10 +205,7 @@ public class ProfileFragment extends Fragment {
             startActivity(intent);
         });
 
-        View.OnClickListener editListener = v ->
-                Toast.makeText(requireContext(),
-                        "Modification du profil à venir.",
-                        Toast.LENGTH_SHORT).show();
+        View.OnClickListener editListener = v -> showEditProfileDialog();
 
         buttonEditProfile.setOnClickListener(editListener);
         buttonEditProfileLarge.setOnClickListener(editListener);
@@ -337,6 +336,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private void displayUserProfile(UserProfile userProfile, FirebaseUser currentUser) {
+        currentUserProfile = userProfile;
         String firstName = safe(userProfile.getFirstName());
         String lastName = safe(userProfile.getLastName());
         String username = safe(userProfile.getUsername());
@@ -363,6 +363,91 @@ public class ProfileFragment extends Fragment {
         textProfileSectionPlaceholder.setText("Les photos publiées apparaîtront ici.");
         setStat(statFollowers, String.valueOf(userProfile.getFollowersCount()), "Abonnés");
         setStat(statFollowing, String.valueOf(userProfile.getFollowingCount()), "Abonnements");
+    }
+
+    private void showEditProfileDialog() {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+
+        if (currentUser == null) {
+            Toast.makeText(requireContext(),
+                    "Connectez-vous pour modifier votre profil.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_edit_profile, null);
+
+        TextInputEditText editFirstName = dialogView.findViewById(R.id.editFirstName);
+        TextInputEditText editLastName = dialogView.findViewById(R.id.editLastName);
+        TextInputEditText editUsername = dialogView.findViewById(R.id.editUsername);
+
+        if (currentUserProfile != null) {
+            editFirstName.setText(currentUserProfile.getFirstName());
+            editLastName.setText(currentUserProfile.getLastName());
+            editUsername.setText(currentUserProfile.getUsername());
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Modifier le profil")
+                .setView(dialogView)
+                .setNegativeButton("Annuler", null)
+                .setPositiveButton("Enregistrer", (dialog, which) -> {
+                    String firstName = getDialogText(editFirstName);
+                    String lastName = getDialogText(editLastName);
+                    String username = getDialogText(editUsername);
+
+                    if (TextUtils.isEmpty(firstName) && TextUtils.isEmpty(lastName) && TextUtils.isEmpty(username)) {
+                        Toast.makeText(requireContext(),
+                                "Ajoutez au moins une information.",
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    updateProfile(currentUser, firstName, lastName, username);
+                })
+                .show();
+    }
+
+    private void updateProfile(FirebaseUser currentUser,
+                               String firstName,
+                               String lastName,
+                               String username) {
+        userRepository.updateUserProfile(
+                currentUser.getUid(),
+                firstName,
+                lastName,
+                username,
+                new UserRepository.OnUserProfileActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        if (!isAdded()) return;
+
+                        Toast.makeText(requireContext(),
+                                "Profil mis à jour.",
+                                Toast.LENGTH_SHORT).show();
+
+                        loadUserProfile(currentUser);
+                    }
+
+                    @Override
+                    public void onError(Exception exception) {
+                        if (!isAdded()) return;
+
+                        Toast.makeText(requireContext(),
+                                "Erreur modification profil : " + exception.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
+    }
+
+    private String getDialogText(TextInputEditText editText) {
+        if (editText.getText() == null) {
+            return "";
+        }
+
+        return editText.getText().toString().trim();
     }
 
     private void displayFallbackProfile(FirebaseUser currentUser) {

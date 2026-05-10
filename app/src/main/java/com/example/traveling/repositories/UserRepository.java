@@ -58,4 +58,25 @@ public class UserRepository {
                 })
                 .addOnFailureListener(listener::onError);
     }
+
+    public void updateUserProfile(String uid,
+                                  String firstName,
+                                  String lastName,
+                                  String username,
+                                  final OnUserProfileActionListener listener) {
+        if (uid == null || uid.isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid user id."));
+            return;
+        }
+
+        db.collection("users")
+                .document(uid)
+                .update(
+                        "firstName", firstName,
+                        "lastName", lastName,
+                        "username", username
+                )
+                .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
 }
