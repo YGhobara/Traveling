@@ -1,5 +1,5 @@
 package com.example.traveling.fragments.travelpath;
-
+import com.example.traveling.models.RouteStep;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -7,7 +7,8 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import android.graphics.Typeface;
+import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -80,6 +81,11 @@ public class RouteDetailFragment extends Fragment {
         TextView textBudget = view.findViewById(R.id.textRouteDetailBudget);
         TextView textDuration = view.findViewById(R.id.textRouteDetailDuration);
         TextView textEffort = view.findViewById(R.id.textRouteDetailEffort);
+        LinearLayout containerSteps = view.findViewById(R.id.containerRouteSteps);
+
+        if (containerSteps != null) {
+            bindSteps(containerSteps);
+        }
 
         if (textTitle != null) {
             textTitle.setText(routeOption.getTitle());
@@ -99,6 +105,54 @@ public class RouteDetailFragment extends Fragment {
 
         if (textEffort != null) {
             textEffort.setText(routeOption.getEffortLevel());
+        }
+    }
+
+    private void bindSteps(LinearLayout containerSteps) {
+        containerSteps.removeAllViews();
+
+        if (routeOption.getSteps() == null || routeOption.getSteps().isEmpty()) {
+            TextView emptyText = new TextView(requireContext());
+            emptyText.setText("Aucune étape détaillée disponible.");
+            emptyText.setTextColor(0xFF64748B);
+            emptyText.setTextSize(14);
+            containerSteps.addView(emptyText);
+            return;
+        }
+
+        for (int i = 0; i < routeOption.getSteps().size(); i++) {
+            RouteStep step = routeOption.getSteps().get(i);
+
+            TextView stepView = new TextView(requireContext());
+
+            String text =
+                    (i + 1) + ". " + step.getName() + "\n" +
+                            step.getPeriod() + " • " + step.getCategory() + "\n" +
+                            step.getDescription() + "\n" +
+                            "Durée : " + step.getEstimatedDurationMinutes() + " min"
+                            + " • Coût : " + String.format(Locale.FRANCE, "%.0f €", step.getEstimatedCost());
+
+            if (step.getTravelToNextMinutes() > 0) {
+                text += "\nTrajet suivant : " + step.getTravelToNextMinutes()
+                        + " min"
+                        + " • " + step.getTravelToNextMode();
+            }
+
+            stepView.setText(text);
+            stepView.setTextColor(0xFF0F172A);
+            stepView.setTextSize(14);
+            stepView.setLineSpacing(4f, 1f);
+            stepView.setPadding(24, 20, 24, 20);
+            stepView.setBackgroundResource(R.drawable.bg_post_placeholder);
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            params.setMargins(0, 0, 0, 16);
+            stepView.setLayoutParams(params);
+
+            containerSteps.addView(stepView);
         }
     }
 

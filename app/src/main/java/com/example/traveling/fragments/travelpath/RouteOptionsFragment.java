@@ -24,9 +24,9 @@ import com.example.traveling.models.RoutePreferences;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.ArrayList;
 public class RouteOptionsFragment extends Fragment {
-
+    private ArrayList<RouteOption> generatedRoutes = new ArrayList<>();
     private RoutePreferences routePreferences;
     private TravelPathAiRepository travelPathAiRepository;
     private TextView textRouteOptionsTitle;
@@ -80,7 +80,19 @@ public class RouteOptionsFragment extends Fragment {
         setupRecycler();
 
         travelPathAiRepository = new TravelPathAiRepository();
-        generateRoutesWithAi();
+
+        if (!generatedRoutes.isEmpty()) {
+            showGeneratedRoutes(generatedRoutes);
+        } else {
+            generateRoutesWithAi();
+        }
+    }
+
+    private void showGeneratedRoutes(List<RouteOption> routes) {
+        setLoading(false);
+        textRouteStatus.setVisibility(View.GONE);
+        recyclerRouteOptions.setVisibility(View.VISIBLE);
+        routeOptionAdapter.submitList(routes);
     }
 
     private void bindViews(View view) {
@@ -111,9 +123,10 @@ public class RouteOptionsFragment extends Fragment {
                     return;
                 }
 
-                textRouteStatus.setVisibility(View.GONE);
-                recyclerRouteOptions.setVisibility(View.VISIBLE);
-                routeOptionAdapter.submitList(routes);
+                generatedRoutes.clear();
+                generatedRoutes.addAll(routes);
+
+                showGeneratedRoutes(generatedRoutes);
             }
 
             @Override
