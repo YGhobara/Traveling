@@ -19,7 +19,11 @@ import com.example.traveling.models.Post;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.example.traveling.models.UserProfile;
+import com.example.traveling.repositories.UserRepository;
 
+import java.util.HashMap;
+import java.util.Map;
 
 public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder> {
 
@@ -35,6 +39,8 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         void onAuthorClick(Post post);
     }
 
+    private final UserRepository userRepository = new UserRepository();
+    private final Map<String, String> avatarCache = new HashMap<>();
     private List<Post> posts = new ArrayList<>();
     private final OnPostClickListener postClickListener;
     private final OnLikeClickListener likeClickListener;
@@ -92,6 +98,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         );
 
         holder.textPostDate.setText(formatRelativeTime(post.getCreatedAt()));
+        displayAuthorAvatar(holder, post);
         holder.textCaption.setText(post.getCaption());
         holder.textLikeCount.setText(String.valueOf(post.getLikeCount()));
         holder.textCommentCount.setText(String.valueOf(post.getCommentCount()));
@@ -172,6 +179,8 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
     }
 
     static class PostViewHolder extends RecyclerView.ViewHolder {
+        TextView textAuthorAvatarInitials;
+        ImageView imageAuthorAvatar;
         TextView textLocationName;
         TextView textPostDate;
         TextView textAuthorName;
@@ -196,6 +205,8 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             buttonComment = itemView.findViewById(R.id.buttonComment);
             textLocationName = itemView.findViewById(R.id.textLocationName);
             textPostDate = itemView.findViewById(R.id.textPostDate);
+            textAuthorAvatarInitials = itemView.findViewById(R.id.textAuthorAvatarInitials);
+            imageAuthorAvatar = itemView.findViewById(R.id.imageAuthorAvatar);
         }
     }
 
@@ -226,5 +237,64 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         } else {
             return "il y a " + (diff / year) + " an(s)";
         }
+    }
+
+    private void displayAuthorAvatar(PostViewHolder holder, Post post) {
+        String userId = post.getUserId();
+
+        holder.textAuthorAvatarInitials.setText(makeInitial(post.getAuthorName()));
+        holder.textAuthorAvatarInitials.setVisibility(View.VISIBLE);
+        holder.imageAuthorAvatar.setVisibility(View.GONE);
+
+        if (TextUtils.isEmpty(userId)) {
+            return;
+        }
+
+        if (avatarCache.containsKey(userId)) {
+            String cachedAvatarUrl = avatarCache.get(userId);
+            loadAvatarIntoHolder(holder, cachedAvatarUrl);
+            return;
+        }
+
+        userRepository.getUserProfile(userId, new UserRepository.OnUserProfileLoadedListener() {
+            @Override
+            public void onSuccess(UserProfile userProfile) {
+                String avatarUrl = userProfile.getAvatarUrl();
+                avatarCache.put(userId, avatarUrl != null ? avatarUrl : "");
+
+                loadAvatarIntoHolder(holder, avatarUrl);
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                avatarCache.put(userId, "");
+            }
+        });
+    }
+
+    private void loadAvatarIntoHolder(PostViewHolder holder, String avatarUrl) {
+        if (TextUtils.isEmpty(avatarUrl)) {
+            holder.imageAuthorAvatar.setVisibility(View.GONE);
+            holder.textAuthorAvatarInitials.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        holder.textAuthorAvatarInitials.setVisibility(View.GONE);
+        holder.imageAuthorAvatar.setVisibility(View.VISIBLE);
+
+        Glide.with(holder.itemView.getContext())
+                .load(avatarUrl)
+                .placeholder(R.drawable.bg_avatar_circle)
+                .error(R.drawable.bg_avatar_circle)
+                .circleCrop()
+                .into(holder.imageAuthorAvatar);
+    }
+
+    private String makeInitial(String name) {
+        if (TextUtils.isEmpty(name)) {
+            return "?";
+        }
+
+        return name.trim().substring(0, 1).toUpperCase();
     }
 }
