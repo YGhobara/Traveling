@@ -53,4 +53,7 @@ dependencies {
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
     implementation("com.cloudinary:cloudinary-android:3.1.2")
     implementation("org.osmdroid:osmdroid-android:6.1.20")
+    implementation("com.google.firebase:firebase-ai")
+    implementation("com.google.guava:guava:31.0.1-android")
+    implementation("org.reactivestreams:reactive-streams:1.0.4")
 }
