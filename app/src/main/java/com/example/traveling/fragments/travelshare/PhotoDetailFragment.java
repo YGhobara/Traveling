@@ -102,9 +102,11 @@ public class PhotoDetailFragment extends Fragment {
                     }
                 });
 
+        imagePost.setOnClickListener(v -> openFullScreenImage());
+
         imagePost.setOnTouchListener((v, event) -> {
             gestureDetector.onTouchEvent(event);
-            return true;
+            return false;
         });
 
         textOverlayLocation = view.findViewById(R.id.textOverlayLocation);
@@ -477,6 +479,26 @@ public class PhotoDetailFragment extends Fragment {
                     .into(imagePost);
         } else {
             imagePost.setImageResource(R.drawable.bg_post_placeholder);
+        }
+    }
+
+    private void openFullScreenImage() {
+        String imageUrl = "";
+
+        if (currentPost != null && !TextUtils.isEmpty(currentPost.getImageUrl())) {
+            imageUrl = currentPost.getImageUrl();
+        }
+
+        if (TextUtils.isEmpty(imageUrl)) {
+            Toast.makeText(requireContext(),
+                    "Image non disponible.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (requireActivity() instanceof MainActivity) {
+            ((MainActivity) requireActivity())
+                    .openFragmentWithBackStack(FullScreenImageFragment.newInstance(imageUrl));
         }
     }
 
