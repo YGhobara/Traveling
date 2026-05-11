@@ -14,7 +14,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.content.Intent;
 import android.net.Uri;
-
+import android.widget.PopupMenu;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -61,7 +61,7 @@ public class PhotoDetailFragment extends Fragment {
     private MaterialButton buttonDirectionsCar;
     private MaterialButton buttonDirectionsWalk;
     private MaterialButton buttonDirectionsTransit;
-
+    private ImageButton buttonPostOptions;
 
     private RecyclerView recyclerViewComments;
     private TextView textNoComments;
@@ -116,6 +116,7 @@ public class PhotoDetailFragment extends Fragment {
         buttonLike = view.findViewById(R.id.buttonDetailLike);
         buttonBack = view.findViewById(R.id.buttonBack);
         buttonReport = view.findViewById(R.id.buttonReport);
+        buttonPostOptions = view.findViewById(R.id.buttonPostOptions);
         buttonOpenMaps = view.findViewById(R.id.buttonOpenMaps);
         buttonDirectionsCar = view.findViewById(R.id.buttonDirectionsCar);
         buttonDirectionsWalk = view.findViewById(R.id.buttonDirectionsWalk);
@@ -148,6 +149,7 @@ public class PhotoDetailFragment extends Fragment {
                 requireActivity().getSupportFragmentManager().popBackStack()
         );
         buttonReport.setOnClickListener(v -> handleReportClick());
+        buttonPostOptions.setOnClickListener(v -> showPostOptionsMenu());
         buttonOpenMaps.setOnClickListener(v -> openLocationInMaps());
         buttonDirectionsCar.setOnClickListener(v -> openDirectionsInMaps("driving"));
         buttonDirectionsWalk.setOnClickListener(v -> openDirectionsInMaps("walking"));
@@ -218,6 +220,78 @@ public class PhotoDetailFragment extends Fragment {
 
         loadImage(post.getImageUrl());
         updateLikeIcon(post);
+        updateDeleteButtonVisibility(post);
+    }
+
+    private void updateDeleteButtonVisibility(Post post) {
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        boolean canDelete = currentUser != null
+                && post != null
+                && post.getUserId() != null
+                && post.getUserId().equals(currentUser.getUid());
+
+        buttonPostOptions.setVisibility(canDelete ? View.VISIBLE : View.GONE);
+    }
+
+    private void showPostOptionsMenu() {
+        PopupMenu popupMenu = new PopupMenu(requireContext(), buttonPostOptions);
+        popupMenu.getMenu().add("Supprimer");
+
+        popupMenu.setOnMenuItemClickListener(item -> {
+            if ("Supprimer".contentEquals(item.getTitle())) {
+                confirmDeletePost();
+                return true;
+            }
+
+            return false;
+        });
+
+        popupMenu.show();
+    }
+
+    private void confirmDeletePost() {
+        if (currentPost == null || currentPost.getId() == null) {
+            Toast.makeText(requireContext(),
+                    "Publication non chargée.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Supprimer la publication")
+                .setMessage("Voulez-vous vraiment supprimer cette publication ? Cette action est irréversible.")
+                .setNegativeButton("Annuler", null)
+                .setPositiveButton("Supprimer", (dialog, which) -> deletePost())
+                .show();
+    }
+
+    private void deletePost() {
+        buttonPostOptions.setEnabled(false);
+
+        postRepository.deletePost(currentPost.getId(), new PostRepository.OnPostActionListener() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+
+                Toast.makeText(requireContext(),
+                        "Publication supprimée.",
+                        Toast.LENGTH_SHORT).show();
+
+                requireActivity().getSupportFragmentManager().popBackStack();
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                buttonPostOptions.setEnabled(true);
+
+                Toast.makeText(requireContext(),
+                        "Erreur suppression : " + exception.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void openAuthorProfile() {

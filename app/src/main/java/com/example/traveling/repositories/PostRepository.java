@@ -269,4 +269,17 @@ public class PostRepository {
                 })
                 .addOnFailureListener(listener::onError);
     }
+
+    public void deletePost(String postId, final OnPostActionListener listener) {
+        if (postId == null || postId.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid post id."));
+            return;
+        }
+
+        db.collection("posts")
+                .document(postId)
+                .delete()
+                .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
 }

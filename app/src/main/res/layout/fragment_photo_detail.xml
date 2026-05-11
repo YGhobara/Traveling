@@ -28,12 +28,24 @@
             app:tint="@color/travel_on_surface" />
 
         <com.google.android.material.textview.MaterialTextView
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="Détail de la photo"
             android:textColor="@color/travel_on_surface"
             android:textSize="18sp"
             android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/buttonPostOptions"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Options"
+            android:padding="12dp"
+            android:src="@drawable/ic_more_vert"
+            android:visibility="gone"
+            app:tint="@color/travel_on_surface" />
     </LinearLayout>
 
     <!-- Scrollable content -->
@@ -213,6 +225,7 @@
                                 android:textSize="12sp"
                                 app:icon="@drawable/ic_report_outline"
                                 app:iconPadding="4dp" />
+
                         </LinearLayout>
 
                         <View
