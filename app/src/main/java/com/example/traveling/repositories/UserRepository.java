@@ -63,6 +63,7 @@ public class UserRepository {
                                   String firstName,
                                   String lastName,
                                   String username,
+                                  String avatarUrl,
                                   final OnUserProfileActionListener listener) {
         if (uid == null || uid.isEmpty()) {
             listener.onError(new IllegalArgumentException("Invalid user id."));
@@ -74,7 +75,8 @@ public class UserRepository {
                 .update(
                         "firstName", firstName,
                         "lastName", lastName,
-                        "username", username
+                        "username", username,
+                        "avatarUrl", avatarUrl
                 )
                 .addOnSuccessListener(unused -> listener.onSuccess())
                 .addOnFailureListener(listener::onError);

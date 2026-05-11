@@ -139,8 +139,16 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             return true;
         });
 
+        holder.buttonLike.setImageResource(
+                likedByCurrentUser
+                        ? R.drawable.ic_favorite_filled
+                        : R.drawable.ic_favorite_outline
+        );
+
         holder.buttonLike.setColorFilter(
-                likedByCurrentUser ? Color.parseColor("#E53935") : Color.parseColor("#6B7280")
+                likedByCurrentUser
+                        ? Color.parseColor("#E53935")
+                        : Color.parseColor("#6B7280")
         );
 
         holder.buttonLike.setOnClickListener(v -> {

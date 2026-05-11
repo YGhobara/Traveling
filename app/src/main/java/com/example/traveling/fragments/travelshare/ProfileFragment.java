@@ -36,6 +36,18 @@ import com.example.traveling.adapters.GroupAdapter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import android.net.Uri;
+import android.widget.ImageView;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+
+import com.bumptech.glide.Glide;
+import com.cloudinary.android.MediaManager;
+import com.cloudinary.android.callback.ErrorInfo;
+import com.cloudinary.android.callback.UploadCallback;
+
+import java.util.Map;
 
 public class ProfileFragment extends Fragment {
 
@@ -47,6 +59,7 @@ public class ProfileFragment extends Fragment {
     private TextView textAvatarInitials;
     private TextView textFullName;
     private TextView textUsername;
+    private ImageView imageProfileAvatar;
     private TextView textProfileSectionPlaceholder;
 
     private View statTrips;
@@ -74,6 +87,12 @@ public class ProfileFragment extends Fragment {
     private UserProfile currentUserProfile;
     private int currentPhotosCount = 0;
     private int currentGroupsCount = 0;
+
+    private ActivityResultLauncher<String> avatarPickerLauncher;
+    private Uri selectedAvatarUri;
+    private ImageView currentDialogAvatarPreview;
+    private String currentAvatarUrl = "";
+    private static final String CLOUDINARY_UPLOAD_PRESET = "traveling_unsigned";
 
     public ProfileFragment() {
         // Required empty public constructor
@@ -112,6 +131,7 @@ public class ProfileFragment extends Fragment {
         textAvatarInitials = view.findViewById(R.id.textAvatarInitials);
         textFullName = view.findViewById(R.id.textFullName);
         textUsername = view.findViewById(R.id.textUsername);
+        imageProfileAvatar = view.findViewById(R.id.imageProfileAvatar);
         textProfileSectionPlaceholder = view.findViewById(R.id.textProfileSectionPlaceholder);
 
         statTrips = view.findViewById(R.id.statTrips);
@@ -131,6 +151,24 @@ public class ProfileFragment extends Fragment {
         recyclerProfileGroups = view.findViewById(R.id.recyclerProfileGroups);
         buttonManageGroups = view.findViewById(R.id.buttonManageGroups);
         recyclerProfilePhotos = view.findViewById(R.id.recyclerProfilePhotos);
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        avatarPickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        selectedAvatarUri = uri;
+
+                        if (currentDialogAvatarPreview != null) {
+                            currentDialogAvatarPreview.setImageURI(uri);
+                        }
+                    }
+                }
+        );
     }
 
     private void setupProfileGroupsRecycler() {
@@ -301,6 +339,8 @@ public class ProfileFragment extends Fragment {
 
         btnLogout.setVisibility(View.GONE);
         buttonEditProfile.setVisibility(View.GONE);
+        imageProfileAvatar.setVisibility(View.GONE);
+        textAvatarInitials.setVisibility(View.VISIBLE);
         buttonEditProfileLarge.setText("Se connecter");
         textProfileSectionPlaceholder.setText("Connectez-vous pour voir vos photos, trajets et groupes.");
 
@@ -337,6 +377,7 @@ public class ProfileFragment extends Fragment {
 
     private void displayUserProfile(UserProfile userProfile, FirebaseUser currentUser) {
         currentUserProfile = userProfile;
+        currentAvatarUrl = safe(userProfile.getAvatarUrl());
         String firstName = safe(userProfile.getFirstName());
         String lastName = safe(userProfile.getLastName());
         String username = safe(userProfile.getUsername());
@@ -355,7 +396,7 @@ public class ProfileFragment extends Fragment {
         textFullName.setText(fullName);
         textUsername.setText(!TextUtils.isEmpty(username) ? "@" + username : "@voyageur");
 
-        textAvatarInitials.setText(makeInitials(firstName, lastName, username, email));
+        displayAvatarOrInitials(userProfile.getAvatarUrl(), firstName, lastName, username, email);
 
         btnLogout.setVisibility(View.VISIBLE);
         buttonEditProfile.setVisibility(View.VISIBLE);
@@ -363,6 +404,28 @@ public class ProfileFragment extends Fragment {
         textProfileSectionPlaceholder.setText("Les photos publiées apparaîtront ici.");
         setStat(statFollowers, String.valueOf(userProfile.getFollowersCount()), "Abonnés");
         setStat(statFollowing, String.valueOf(userProfile.getFollowingCount()), "Abonnements");
+    }
+
+    private void displayAvatarOrInitials(String avatarUrl,
+                                         String firstName,
+                                         String lastName,
+                                         String username,
+                                         String email) {
+        if (!TextUtils.isEmpty(avatarUrl)) {
+            textAvatarInitials.setVisibility(View.GONE);
+            imageProfileAvatar.setVisibility(View.VISIBLE);
+
+            Glide.with(requireContext())
+                    .load(avatarUrl)
+                    .placeholder(R.drawable.bg_avatar_circle)
+                    .error(R.drawable.bg_avatar_circle)
+                    .circleCrop()
+                    .into(imageProfileAvatar);
+        } else {
+            imageProfileAvatar.setVisibility(View.GONE);
+            textAvatarInitials.setVisibility(View.VISIBLE);
+            textAvatarInitials.setText(makeInitials(firstName, lastName, username, email));
+        }
     }
 
     private void showEditProfileDialog() {
@@ -381,6 +444,27 @@ public class ProfileFragment extends Fragment {
         TextInputEditText editFirstName = dialogView.findViewById(R.id.editFirstName);
         TextInputEditText editLastName = dialogView.findViewById(R.id.editLastName);
         TextInputEditText editUsername = dialogView.findViewById(R.id.editUsername);
+
+        ImageView imageEditAvatar = dialogView.findViewById(R.id.imageEditAvatar);
+        MaterialButton buttonChooseAvatar = dialogView.findViewById(R.id.buttonChooseAvatar);
+
+        currentDialogAvatarPreview = imageEditAvatar;
+        selectedAvatarUri = null;
+
+        if (!TextUtils.isEmpty(currentAvatarUrl)) {
+            Glide.with(requireContext())
+                    .load(currentAvatarUrl)
+                    .placeholder(R.drawable.bg_avatar_circle)
+                    .error(R.drawable.bg_avatar_circle)
+                    .circleCrop()
+                    .into(imageEditAvatar);
+        } else {
+            imageEditAvatar.setImageResource(R.drawable.bg_avatar_circle);
+        }
+
+        buttonChooseAvatar.setOnClickListener(v ->
+                avatarPickerLauncher.launch("image/*")
+        );
 
         if (currentUserProfile != null) {
             editFirstName.setText(currentUserProfile.getFirstName());
@@ -404,20 +488,76 @@ public class ProfileFragment extends Fragment {
                         return;
                     }
 
-                    updateProfile(currentUser, firstName, lastName, username);
+                    uploadAvatarIfNeededAndUpdateProfile(currentUser, firstName, lastName, username);
                 })
                 .show();
+    }
+
+    private void uploadAvatarIfNeededAndUpdateProfile(FirebaseUser currentUser,
+                                                      String firstName,
+                                                      String lastName,
+                                                      String username) {
+        if (selectedAvatarUri == null) {
+            updateProfile(currentUser, firstName, lastName, username, currentAvatarUrl);
+            return;
+        }
+
+        MediaManager.get()
+                .upload(selectedAvatarUri)
+                .unsigned(CLOUDINARY_UPLOAD_PRESET)
+                .callback(new UploadCallback() {
+                    @Override
+                    public void onStart(String requestId) {
+                    }
+
+                    @Override
+                    public void onProgress(String requestId, long bytes, long totalBytes) {
+                    }
+
+                    @Override
+                    public void onSuccess(String requestId, Map resultData) {
+                        if (!isAdded()) return;
+
+                        Object secureUrlObject = resultData.get("secure_url");
+
+                        if (secureUrlObject == null) {
+                            Toast.makeText(requireContext(),
+                                    "Erreur : URL avatar introuvable.",
+                                    Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        String uploadedAvatarUrl = secureUrlObject.toString();
+                        updateProfile(currentUser, firstName, lastName, username, uploadedAvatarUrl);
+                    }
+
+                    @Override
+                    public void onError(String requestId, ErrorInfo error) {
+                        if (!isAdded()) return;
+
+                        Toast.makeText(requireContext(),
+                                "Erreur téléversement avatar : " + error.getDescription(),
+                                Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onReschedule(String requestId, ErrorInfo error) {
+                    }
+                })
+                .dispatch();
     }
 
     private void updateProfile(FirebaseUser currentUser,
                                String firstName,
                                String lastName,
-                               String username) {
+                               String username,
+                               String avatarUrl) {
         userRepository.updateUserProfile(
                 currentUser.getUid(),
                 firstName,
                 lastName,
                 username,
+                avatarUrl,
                 new UserRepository.OnUserProfileActionListener() {
                     @Override
                     public void onSuccess() {
@@ -453,7 +593,7 @@ public class ProfileFragment extends Fragment {
     private void displayFallbackProfile(FirebaseUser currentUser) {
         String email = currentUser.getEmail() != null ? currentUser.getEmail() : "Utilisateur";
 
-        textAvatarInitials.setText(makeInitials("", "", "", email));
+        displayAvatarOrInitials("", "", "", "", email);
         textFullName.setText("Utilisateur");
         textUsername.setText("@profil");
 

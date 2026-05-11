@@ -5,6 +5,33 @@
     android:orientation="vertical"
     android:padding="20dp">
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+
+        <ImageView
+            android:id="@+id/imageEditAvatar"
+            android:layout_width="86dp"
+            android:layout_height="86dp"
+            android:background="@drawable/bg_avatar_circle"
+            android:contentDescription="Photo de profil"
+            android:padding="2dp"
+            android:scaleType="centerCrop" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonChooseAvatar"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Changer la photo"
+            android:textAllCaps="false" />
+
+    </LinearLayout>
+
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

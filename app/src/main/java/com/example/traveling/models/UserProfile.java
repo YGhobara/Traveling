@@ -7,6 +7,7 @@ public class UserProfile {
     private String lastName;
     private String username;
     private String email;
+    private String avatarUrl;
     private int followersCount;
     private int followingCount;
     private long createdAt;
@@ -63,6 +64,14 @@ public class UserProfile {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public long getCreatedAt() {

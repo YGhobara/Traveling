@@ -508,8 +508,16 @@ public class PhotoDetailFragment extends Fragment {
 
         boolean likedByCurrentUser = currentUserId != null && post.isLikedByUser(currentUserId);
 
+        buttonLike.setImageResource(
+                likedByCurrentUser
+                        ? R.drawable.ic_favorite_filled
+                        : R.drawable.ic_favorite_outline
+        );
+
         buttonLike.setColorFilter(
-                likedByCurrentUser ? Color.parseColor("#E53935") : Color.parseColor("#6B7280")
+                likedByCurrentUser
+                        ? Color.parseColor("#E53935")
+                        : Color.parseColor("#6B7280")
         );
     }
 
