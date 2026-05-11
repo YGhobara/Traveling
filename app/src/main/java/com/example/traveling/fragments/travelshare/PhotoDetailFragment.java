@@ -21,6 +21,9 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.appcompat.app.AlertDialog;
+import android.widget.ArrayAdapter;
+import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 
 import com.example.traveling.models.Report;
 import com.example.traveling.repositories.ReportRepository;
@@ -236,9 +239,16 @@ public class PhotoDetailFragment extends Fragment {
 
     private void showPostOptionsMenu() {
         PopupMenu popupMenu = new PopupMenu(requireContext(), buttonPostOptions);
+
+        popupMenu.getMenu().add("Modifier");
         popupMenu.getMenu().add("Supprimer");
 
         popupMenu.setOnMenuItemClickListener(item -> {
+            if ("Modifier".contentEquals(item.getTitle())) {
+                showEditPostDialog();
+                return true;
+            }
+
             if ("Supprimer".contentEquals(item.getTitle())) {
                 confirmDeletePost();
                 return true;
@@ -264,6 +274,113 @@ public class PhotoDetailFragment extends Fragment {
                 .setNegativeButton("Annuler", null)
                 .setPositiveButton("Supprimer", (dialog, which) -> deletePost())
                 .show();
+    }
+
+    private void showEditPostDialog() {
+        if (currentPost == null || currentPost.getId() == null) {
+            Toast.makeText(requireContext(),
+                    "Publication non chargée.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_edit_post, null);
+
+        TextInputEditText editCaption = dialogView.findViewById(R.id.editPostCaption);
+        MaterialAutoCompleteTextView dropdownPlaceType =
+                dialogView.findViewById(R.id.dropdownEditPostPlaceType);
+        SwitchMaterial switchPublic = dialogView.findViewById(R.id.switchEditPostPublic);
+
+        editCaption.setText(currentPost.getCaption());
+        dropdownPlaceType.setText(currentPost.getPlaceType(), false);
+        switchPublic.setChecked(currentPost.isPublicPost());
+
+        String[] placeTypes = {
+                "Nature",
+                "Musée",
+                "Monument",
+                "Rue",
+                "Restaurant",
+                "Magasin",
+                "Plage",
+                "Montagne",
+                "Ville",
+                "Autre"
+        };
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                placeTypes
+        );
+
+        dropdownPlaceType.setAdapter(adapter);
+        dropdownPlaceType.setOnClickListener(v -> dropdownPlaceType.showDropDown());
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Modifier la publication")
+                .setView(dialogView)
+                .setNegativeButton("Annuler", null)
+                .setPositiveButton("Enregistrer", (dialog, which) -> {
+                    String caption = editCaption.getText() != null
+                            ? editCaption.getText().toString().trim()
+                            : "";
+
+                    String placeType = dropdownPlaceType.getText() != null
+                            ? dropdownPlaceType.getText().toString().trim()
+                            : "";
+
+                    boolean publicPost = switchPublic.isChecked();
+
+                    if (TextUtils.isEmpty(caption)) {
+                        Toast.makeText(requireContext(),
+                                "La description ne peut pas être vide.",
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    updatePost(caption, placeType, publicPost);
+                })
+                .show();
+    }
+
+    private void updatePost(String caption, String placeType, boolean publicPost) {
+        if (currentPost == null || currentPost.getId() == null) return;
+
+        buttonPostOptions.setEnabled(false);
+
+        postRepository.updatePostBasic(
+                currentPost.getId(),
+                caption,
+                placeType,
+                publicPost,
+                new PostRepository.OnPostActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        if (!isAdded()) return;
+
+                        buttonPostOptions.setEnabled(true);
+
+                        Toast.makeText(requireContext(),
+                                "Publication modifiée.",
+                                Toast.LENGTH_SHORT).show();
+
+                        loadFreshPost();
+                    }
+
+                    @Override
+                    public void onError(Exception exception) {
+                        if (!isAdded()) return;
+
+                        buttonPostOptions.setEnabled(true);
+
+                        Toast.makeText(requireContext(),
+                                "Erreur modification : " + exception.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
     }
 
     private void deletePost() {

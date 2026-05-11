@@ -282,4 +282,25 @@ public class PostRepository {
                 .addOnSuccessListener(unused -> listener.onSuccess())
                 .addOnFailureListener(listener::onError);
     }
+
+    public void updatePostBasic(String postId,
+                                String caption,
+                                String placeType,
+                                boolean publicPost,
+                                final OnPostActionListener listener) {
+        if (postId == null || postId.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid post id."));
+            return;
+        }
+
+        db.collection("posts")
+                .document(postId)
+                .update(
+                        "caption", caption,
+                        "placeType", placeType,
+                        "publicPost", publicPost
+                )
+                .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
 }
