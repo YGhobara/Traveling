@@ -49,6 +49,8 @@ public class PhotoDetailFragment extends Fragment {
 
     private ImageView imagePost;
     private TextView textAuthor;
+    private TextView textDetailAuthorAvatarInitials;
+    private ImageView imageDetailAuthorAvatar;
     private TextView textLocation;
     private TextView textPostDate;
     private TextView textPlaceType;
@@ -112,6 +114,8 @@ public class PhotoDetailFragment extends Fragment {
         textOverlayLocation = view.findViewById(R.id.textOverlayLocation);
         textOverlayPostDate = view.findViewById(R.id.textOverlayPostDate);
         textAuthor = view.findViewById(R.id.textDetailAuthorName);
+        textDetailAuthorAvatarInitials = view.findViewById(R.id.textDetailAuthorAvatarInitials);
+        imageDetailAuthorAvatar = view.findViewById(R.id.imageDetailAuthorAvatar);
         textLocation = view.findViewById(R.id.textDetailLocationName);
         textPostDate = view.findViewById(R.id.textDetailPostDate);
         textPlaceType = view.findViewById(R.id.textDetailPlaceType);
@@ -214,6 +218,7 @@ public class PhotoDetailFragment extends Fragment {
 
     private void displayPost(Post post) {
         textAuthor.setText(post.getAuthorName());
+        loadAuthorAvatar(post);
         textLocation.setText(post.getLocationName());
         textPostDate.setText(formatRelativeTime(post.getCreatedAt()));
         textOverlayLocation.setText(post.getLocationName());
@@ -435,6 +440,59 @@ public class PhotoDetailFragment extends Fragment {
                         .openFragmentWithBackStack(UserProfileFragment.newInstance(authorId));
             }
         }
+    }
+
+    private void loadAuthorAvatar(Post post) {
+        if (post == null) return;
+
+        textDetailAuthorAvatarInitials.setText(makeInitial(post.getAuthorName()));
+        textDetailAuthorAvatarInitials.setVisibility(View.VISIBLE);
+        imageDetailAuthorAvatar.setVisibility(View.GONE);
+
+        if (TextUtils.isEmpty(post.getUserId())) {
+            return;
+        }
+
+        userRepository.getUserProfile(post.getUserId(), new UserRepository.OnUserProfileLoadedListener() {
+            @Override
+            public void onSuccess(UserProfile userProfile) {
+                if (!isAdded()) return;
+
+                String avatarUrl = userProfile.getAvatarUrl();
+
+                if (TextUtils.isEmpty(avatarUrl)) {
+                    imageDetailAuthorAvatar.setVisibility(View.GONE);
+                    textDetailAuthorAvatarInitials.setVisibility(View.VISIBLE);
+                    return;
+                }
+
+                textDetailAuthorAvatarInitials.setVisibility(View.GONE);
+                imageDetailAuthorAvatar.setVisibility(View.VISIBLE);
+
+                Glide.with(requireContext())
+                        .load(avatarUrl)
+                        .placeholder(R.drawable.bg_avatar_circle)
+                        .error(R.drawable.bg_avatar_circle)
+                        .circleCrop()
+                        .into(imageDetailAuthorAvatar);
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                imageDetailAuthorAvatar.setVisibility(View.GONE);
+                textDetailAuthorAvatarInitials.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    private String makeInitial(String name) {
+        if (TextUtils.isEmpty(name)) {
+            return "?";
+        }
+
+        return name.trim().substring(0, 1).toUpperCase();
     }
 
     private void openCommentAuthorProfile(Comment comment) {
