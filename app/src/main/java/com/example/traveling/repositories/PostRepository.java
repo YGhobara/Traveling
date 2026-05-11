@@ -187,6 +187,33 @@ public class PostRepository {
                 .addOnFailureListener(listener::onError);
     }
 
+    public void clearGroupFromPosts(String groupId, final OnPostActionListener listener) {
+        if (groupId == null || groupId.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid group id."));
+            return;
+        }
+
+        db.collection("posts")
+                .whereEqualTo("groupId", groupId)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    com.google.firebase.firestore.WriteBatch batch = db.batch();
+
+                    for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
+                        batch.update(
+                                document.getReference(),
+                                "groupId", null,
+                                "groupName", null
+                        );
+                    }
+
+                    batch.commit()
+                            .addOnSuccessListener(unused -> listener.onSuccess())
+                            .addOnFailureListener(listener::onError);
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
     public void createPost(Post post, final OnPostActionListener listener) {
         if (post == null) {
             listener.onError(new IllegalArgumentException("Post cannot be null."));

@@ -27,6 +27,8 @@ import com.example.traveling.repositories.GroupRepository;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import android.widget.PopupMenu;
+import com.example.traveling.repositories.PostRepository;
 
 public class GroupDetailFragment extends Fragment {
 
@@ -35,10 +37,11 @@ public class GroupDetailFragment extends Fragment {
     private FirebaseAuth mAuth;
     private FirebaseUser currentUser;
     private GroupRepository groupRepository;
+    private PostRepository postRepository;
     private RecyclerView recyclerGroupPosts;
     private PostAdapter postAdapter;
-    private PostRepository postRepository;
 
+    private ImageButton buttonGroupOptions;
     private ImageButton buttonBack;
     private TextView textHeaderTitle;
     private TextView textGroupName;
@@ -104,6 +107,7 @@ public class GroupDetailFragment extends Fragment {
         textGroupFeedStatus = view.findViewById(R.id.textGroupFeedStatus);
         buttonJoinLeave = view.findViewById(R.id.buttonJoinLeave);
         recyclerGroupPosts = view.findViewById(R.id.recyclerGroupPosts);
+        buttonGroupOptions = view.findViewById(R.id.buttonGroupOptions);
     }
 
     private void setupPostRecycler() {
@@ -238,6 +242,8 @@ public class GroupDetailFragment extends Fragment {
                 joinGroup();
             }
         });
+
+        buttonGroupOptions.setOnClickListener(v -> showGroupOptionsMenu());
     }
 
     private void loadGroup() {
@@ -311,6 +317,96 @@ public class GroupDetailFragment extends Fragment {
             buttonJoinLeave.setEnabled(true);
         }
         loadGroupPosts();
+        updateGroupOptionsVisibility(group);
+    }
+
+    private void showGroupOptionsMenu() {
+        PopupMenu popupMenu = new PopupMenu(requireContext(), buttonGroupOptions);
+        popupMenu.getMenu().add("Supprimer le groupe");
+
+        popupMenu.setOnMenuItemClickListener(item -> {
+            if ("Supprimer le groupe".contentEquals(item.getTitle())) {
+                confirmDeleteGroup();
+                return true;
+            }
+
+            return false;
+        });
+
+        popupMenu.show();
+    }
+
+    private void confirmDeleteGroup() {
+        if (currentGroup == null || currentGroup.getId() == null) {
+            Toast.makeText(requireContext(),
+                    "Groupe non chargé.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Supprimer le groupe")
+                .setMessage("Voulez-vous vraiment supprimer ce groupe ? Les publications du groupe ne seront pas supprimées, mais elles ne seront plus associées à ce groupe.")
+                .setNegativeButton("Annuler", null)
+                .setPositiveButton("Supprimer", (dialog, which) -> deleteGroup())
+                .show();
+    }
+
+    private void deleteGroup() {
+        if (currentGroup == null || currentGroup.getId() == null) return;
+
+        buttonGroupOptions.setEnabled(false);
+
+        postRepository.clearGroupFromPosts(currentGroup.getId(), new PostRepository.OnPostActionListener() {
+            @Override
+            public void onSuccess() {
+                groupRepository.deleteGroup(currentGroup.getId(), new GroupRepository.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        if (!isAdded()) return;
+
+                        Toast.makeText(requireContext(),
+                                "Groupe supprimé.",
+                                Toast.LENGTH_SHORT).show();
+
+                        requireActivity().getSupportFragmentManager().popBackStack();
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        if (!isAdded()) return;
+
+                        buttonGroupOptions.setEnabled(true);
+
+                        Toast.makeText(requireContext(),
+                                "Erreur suppression groupe : " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                buttonGroupOptions.setEnabled(true);
+
+                Toast.makeText(requireContext(),
+                        "Erreur nettoyage publications : " + exception.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void updateGroupOptionsVisibility(Group group) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+
+        boolean isOwner = currentUser != null
+                && group != null
+                && group.getOwnerId() != null
+                && group.getOwnerId().equals(currentUser.getUid());
+
+        buttonGroupOptions.setVisibility(isOwner ? View.VISIBLE : View.GONE);
     }
 
     private void joinGroup() {

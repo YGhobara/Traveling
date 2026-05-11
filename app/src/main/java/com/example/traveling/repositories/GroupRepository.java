@@ -167,6 +167,19 @@ public class GroupRepository {
                 .addOnFailureListener(listener::onError);
     }
 
+    public void deleteGroup(String groupId, ActionListener listener) {
+        if (groupId == null || groupId.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Invalid group id."));
+            return;
+        }
+
+        db.collection("groups")
+                .document(groupId)
+                .delete()
+                .addOnSuccessListener(unused -> listener.onSuccess())
+                .addOnFailureListener(listener::onError);
+    }
+
     public boolean isCurrentUserMember(@Nullable Group group, String userId) {
         return group != null && group.isMember(userId);
     }
