@@ -17,9 +17,19 @@ import com.example.traveling.R;
 import com.example.traveling.models.RouteOption;
 
 import java.util.Locale;
+import android.view.LayoutInflater;
+import java.util.Locale;
+import android.content.Intent;
+import android.widget.Toast;
+
+import com.google.android.material.button.MaterialButton;
 
 public class RouteDetailFragment extends Fragment {
 
+    private MaterialButton buttonLikeRoute;
+    private MaterialButton buttonSaveRoute;
+    private MaterialButton buttonShareRoute;
+    private MaterialButton buttonExportRoutePdf;
     private RouteOption routeOption;
 
     public RouteDetailFragment() {
@@ -63,6 +73,33 @@ public class RouteDetailFragment extends Fragment {
 
         setupBackButton(view);
         bindRoute(view);
+        setupActionButtons(view);
+    }
+
+    private void setupActionButtons(View view) {
+        buttonLikeRoute = view.findViewById(R.id.buttonLikeRoute);
+        buttonSaveRoute = view.findViewById(R.id.buttonSaveRoute);
+        buttonShareRoute = view.findViewById(R.id.buttonShareRoute);
+        buttonExportRoutePdf = view.findViewById(R.id.buttonExportRoutePdf);
+
+        updateLikeButton();
+
+        buttonLikeRoute.setOnClickListener(v -> {
+            routeOption.setLiked(!routeOption.isLiked());
+            updateLikeButton();
+        });
+
+        buttonSaveRoute.setOnClickListener(v -> {
+            routeOption.setSaved(true);
+            buttonSaveRoute.setIconResource(R.drawable.ic_bookmark_outline);
+            Toast.makeText(requireContext(), "Sauvegarde locale bientôt ajoutée.", Toast.LENGTH_SHORT).show();
+        });
+
+        buttonShareRoute.setOnClickListener(v -> shareRoute());
+
+        buttonExportRoutePdf.setOnClickListener(v ->
+                Toast.makeText(requireContext(), "Export PDF bientôt ajouté.", Toast.LENGTH_SHORT).show()
+        );
     }
 
     private void setupBackButton(View view) {
@@ -73,6 +110,59 @@ public class RouteDetailFragment extends Fragment {
                     requireActivity().getSupportFragmentManager().popBackStack()
             );
         }
+    }
+
+    private void updateLikeButton() {
+        if (buttonLikeRoute == null) {
+            return;
+        }
+
+        if (routeOption.isLiked()) {
+            buttonLikeRoute.setIconResource(R.drawable.ic_favorite_filled);
+        } else {
+            buttonLikeRoute.setIconResource(R.drawable.ic_favorite_outline);
+        }
+    }
+
+    private void shareRoute() {
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_SUBJECT, routeOption.getTitle());
+        intent.putExtra(Intent.EXTRA_TEXT, buildShareText());
+
+        startActivity(Intent.createChooser(intent, "Partager le parcours"));
+    }
+
+    private String buildShareText() {
+        StringBuilder builder = new StringBuilder();
+
+        builder.append(routeOption.getTitle()).append("\n\n");
+        builder.append(routeOption.getSummary()).append("\n\n");
+        builder.append("Budget estimé : ")
+                .append(String.format(Locale.FRANCE, "%.0f €", routeOption.getEstimatedBudget()))
+                .append("\n");
+        builder.append("Durée : ")
+                .append(formatDuration(routeOption.getEstimatedDurationMinutes()))
+                .append("\n");
+        builder.append("Effort : ")
+                .append(routeOption.getEffortLevel())
+                .append("\n\n");
+
+        if (routeOption.getSteps() != null && !routeOption.getSteps().isEmpty()) {
+            builder.append("Étapes :\n");
+
+            for (int i = 0; i < routeOption.getSteps().size(); i++) {
+                RouteStep step = routeOption.getSteps().get(i);
+                builder.append(i + 1)
+                        .append(". ")
+                        .append(safeText(step.getName(), "Étape"))
+                        .append(" — ")
+                        .append(safeText(step.getPeriod(), "Moment"))
+                        .append("\n");
+            }
+        }
+
+        return builder.toString();
     }
 
     private void bindRoute(View view) {
@@ -120,40 +210,51 @@ public class RouteDetailFragment extends Fragment {
             return;
         }
 
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
+
         for (int i = 0; i < routeOption.getSteps().size(); i++) {
             RouteStep step = routeOption.getSteps().get(i);
 
-            TextView stepView = new TextView(requireContext());
+            View stepView = inflater.inflate(R.layout.item_route_step, containerSteps, false);
 
-            String text =
-                    (i + 1) + ". " + step.getName() + "\n" +
-                            step.getPeriod() + " • " + step.getCategory() + "\n" +
-                            step.getDescription() + "\n" +
-                            "Durée : " + step.getEstimatedDurationMinutes() + " min"
-                            + " • Coût : " + String.format(Locale.FRANCE, "%.0f €", step.getEstimatedCost());
+            TextView textStepNumber = stepView.findViewById(R.id.textStepNumber);
+            TextView textStepName = stepView.findViewById(R.id.textStepName);
+            TextView textStepMeta = stepView.findViewById(R.id.textStepMeta);
+            TextView textStepDescription = stepView.findViewById(R.id.textStepDescription);
+            TextView textStepDuration = stepView.findViewById(R.id.textStepDuration);
+            TextView textStepCost = stepView.findViewById(R.id.textStepCost);
+            TextView textStepTravelNext = stepView.findViewById(R.id.textStepTravelNext);
+
+            textStepNumber.setText(String.valueOf(i + 1));
+            textStepName.setText(safeText(step.getName(), "Étape"));
+            textStepMeta.setText(safeText(step.getPeriod(), "Moment") + " • " + safeText(step.getCategory(), "Activité"));
+            textStepDescription.setText(safeText(step.getDescription(), "Aucune description disponible."));
+
+            textStepDuration.setText("Durée : " + step.getEstimatedDurationMinutes() + " min");
+            textStepCost.setText(String.format(Locale.FRANCE, "Coût : %.0f €", step.getEstimatedCost()));
 
             if (step.getTravelToNextMinutes() > 0) {
-                text += "\nTrajet suivant : " + step.getTravelToNextMinutes()
-                        + " min"
-                        + " • " + step.getTravelToNextMode();
+                textStepTravelNext.setVisibility(View.VISIBLE);
+                textStepTravelNext.setText(
+                        "Trajet suivant : "
+                                + step.getTravelToNextMinutes()
+                                + " min • "
+                                + safeText(step.getTravelToNextMode(), "déplacement")
+                );
+            } else {
+                textStepTravelNext.setVisibility(View.GONE);
             }
-
-            stepView.setText(text);
-            stepView.setTextColor(0xFF0F172A);
-            stepView.setTextSize(14);
-            stepView.setLineSpacing(4f, 1f);
-            stepView.setPadding(24, 20, 24, 20);
-            stepView.setBackgroundResource(R.drawable.bg_post_placeholder);
-
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-            );
-            params.setMargins(0, 0, 0, 16);
-            stepView.setLayoutParams(params);
 
             containerSteps.addView(stepView);
         }
+    }
+
+    private String safeText(String value, String fallback) {
+        if (value == null || value.trim().isEmpty()) {
+            return fallback;
+        }
+
+        return value.trim();
     }
 
     private String formatDuration(int minutes) {
