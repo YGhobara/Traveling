@@ -13,6 +13,7 @@ public class RouteOption implements Serializable {
     private int estimatedDurationMinutes;
     private String effortLevel;
     private String weatherAdvice;
+    private String destination;
     private List<RouteStep> steps = new ArrayList<>();
     private boolean liked;
     private boolean saved;
@@ -74,6 +75,14 @@ public class RouteOption implements Serializable {
 
     public void setWeatherAdvice(String weatherAdvice) {
         this.weatherAdvice = weatherAdvice;
+    }
+
+    public String getDestination() {
+        return destination;
+    }
+
+    public void setDestination(String destination) {
+        this.destination = destination;
     }
 
     public List<RouteStep> getSteps() {

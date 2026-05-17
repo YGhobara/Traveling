@@ -29,9 +29,14 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.ArrayList;
 import java.util.List;
+import com.example.traveling.local.SavedRouteEntity;
+import com.example.traveling.repositories.SavedRouteRepository;
+import com.example.traveling.utils.RouteJsonMapper;
+
+import org.json.JSONException;
 
 public class RouteDetailFragment extends Fragment {
-
+    private SavedRouteRepository savedRouteRepository;
     private MaterialButton buttonLikeRoute;
     private MaterialButton buttonSaveRoute;
     private MaterialButton buttonShareRoute;
@@ -79,6 +84,7 @@ public class RouteDetailFragment extends Fragment {
 
         setupBackButton(view);
         bindRoute(view);
+        savedRouteRepository = new SavedRouteRepository(requireContext());
         setupActionButtons(view);
     }
 
@@ -95,17 +101,46 @@ public class RouteDetailFragment extends Fragment {
             updateLikeButton();
         });
 
-        buttonSaveRoute.setOnClickListener(v -> {
-            routeOption.setSaved(true);
-            buttonSaveRoute.setIconResource(R.drawable.ic_bookmark_outline);
-            Toast.makeText(requireContext(), "Sauvegarde locale bientôt ajoutée.", Toast.LENGTH_SHORT).show();
-        });
+        buttonSaveRoute.setOnClickListener(v -> saveRouteLocally());
 
         buttonShareRoute.setOnClickListener(v -> shareRoute());
 
         buttonExportRoutePdf.setOnClickListener(v ->
                 Toast.makeText(requireContext(), "Export PDF bientôt ajouté.", Toast.LENGTH_SHORT).show()
         );
+    }
+
+    private void saveRouteLocally() {
+        try {
+            String destination = routeOption.getDestination();
+
+            SavedRouteEntity entity = RouteJsonMapper.toEntity(routeOption, destination);
+
+            savedRouteRepository.saveRoute(entity, new SavedRouteRepository.SaveRouteCallback() {
+                @Override
+                public void onSuccess(long routeId) {
+                    if (!isAdded()) {
+                        return;
+                    }
+
+                    routeOption.setSaved(true);
+                    buttonSaveRoute.setEnabled(false);
+                    Toast.makeText(requireContext(), "Parcours enregistré localement.", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onError(Exception exception) {
+                    if (!isAdded()) {
+                        return;
+                    }
+
+                    Toast.makeText(requireContext(), "Erreur lors de la sauvegarde.", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+        } catch (JSONException e) {
+            Toast.makeText(requireContext(), "Erreur de préparation du parcours.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void setupBackButton(View view) {

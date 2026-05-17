@@ -17,7 +17,7 @@ public class RouteJsonMapper {
         SavedRouteEntity entity = new SavedRouteEntity();
 
         entity.setTitle(routeOption.getTitle());
-        entity.setDestination(destination);
+        entity.setDestination(destination != null ? destination : routeOption.getDestination());
         entity.setType(routeOption.getType());
         entity.setSummary(routeOption.getSummary());
         entity.setEstimatedBudget(routeOption.getEstimatedBudget());
@@ -46,6 +46,7 @@ public class RouteJsonMapper {
         object.put("estimatedBudget", routeOption.getEstimatedBudget());
         object.put("estimatedDurationMinutes", routeOption.getEstimatedDurationMinutes());
         object.put("effortLevel", routeOption.getEffortLevel());
+        object.put("destination", routeOption.getDestination());
         object.put("weatherAdvice", routeOption.getWeatherAdvice());
         object.put("liked", routeOption.isLiked());
         object.put("saved", routeOption.isSaved());
@@ -86,6 +87,7 @@ public class RouteJsonMapper {
         routeOption.setEstimatedBudget(object.optDouble("estimatedBudget"));
         routeOption.setEstimatedDurationMinutes(object.optInt("estimatedDurationMinutes"));
         routeOption.setEffortLevel(object.optString("effortLevel"));
+        routeOption.setDestination(object.optString("destination"));
         routeOption.setWeatherAdvice(object.optString("weatherAdvice"));
         routeOption.setLiked(object.optBoolean("liked", false));
         routeOption.setSaved(object.optBoolean("saved", false));

@@ -134,6 +134,10 @@ public class RouteOptionsFragment extends Fragment {
                     return;
                 }
 
+                for (RouteOption route : routes) {
+                    route.setDestination(routePreferences.getDestination());
+                }
+
                 generatedRoutes.clear();
                 generatedRoutes.addAll(routes);
 

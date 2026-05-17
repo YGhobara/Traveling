@@ -48,13 +48,23 @@ import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
 
 import java.util.Map;
+import com.example.traveling.adapters.SavedRouteAdapter;
+import com.example.traveling.local.SavedRouteEntity;
+import com.example.traveling.models.RouteOption;
+import com.example.traveling.repositories.SavedRouteRepository;
+import com.example.traveling.fragments.travelpath.RouteDetailFragment;
+import com.example.traveling.utils.RouteJsonMapper;
 
+import org.json.JSONException;
+
+import java.util.ArrayList;
 public class ProfileFragment extends Fragment {
 
     private FirebaseAuth mAuth;
     private UserRepository userRepository;
     private PostRepository postRepository;
     private GroupRepository groupRepository;
+    private SavedRouteRepository savedRouteRepository;
 
     private TextView textAvatarInitials;
     private TextView textFullName;
@@ -79,6 +89,9 @@ public class ProfileFragment extends Fragment {
     private RecyclerView recyclerProfileGroups;
     private RecyclerView recyclerProfilePhotos;
     private PostGridAdapter profilePhotosAdapter;
+    private RecyclerView recyclerProfileRoutes;
+    private SavedRouteAdapter savedRouteAdapter;
+    private int currentRoutesCount = 0;
     private MaterialButton buttonManageGroups;
 
     private List<Post> currentUserPosts;
@@ -109,11 +122,13 @@ public class ProfileFragment extends Fragment {
         userRepository = new UserRepository();
         postRepository = new PostRepository();
         groupRepository = new GroupRepository();
+        savedRouteRepository = new SavedRouteRepository(requireContext());
 
         bindViews(view);
         setupStats(view);
         setupProfileGroupsRecycler();
         setupProfilePhotosRecycler();
+        setupProfileRoutesRecycler();
         setupActions();
 
         FirebaseUser currentUser = mAuth.getCurrentUser();
@@ -151,6 +166,7 @@ public class ProfileFragment extends Fragment {
         recyclerProfileGroups = view.findViewById(R.id.recyclerProfileGroups);
         buttonManageGroups = view.findViewById(R.id.buttonManageGroups);
         recyclerProfilePhotos = view.findViewById(R.id.recyclerProfilePhotos);
+        recyclerProfileRoutes = view.findViewById(R.id.recyclerProfileRoutes);
     }
 
     @Override
@@ -192,6 +208,13 @@ public class ProfileFragment extends Fragment {
 
         recyclerProfilePhotos.setLayoutManager(new GridLayoutManager(requireContext(), 2));
         recyclerProfilePhotos.setAdapter(profilePhotosAdapter);
+    }
+
+    private void setupProfileRoutesRecycler() {
+        savedRouteAdapter = new SavedRouteAdapter(savedRoute -> openSavedRouteDetail(savedRoute));
+
+        recyclerProfileRoutes.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerProfileRoutes.setAdapter(savedRouteAdapter);
     }
 
     private void setupStats(View view) {
@@ -262,10 +285,11 @@ public class ProfileFragment extends Fragment {
 
     private void showPhotosSection() {
         setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, true);
-        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
+        setTab(tabRoutes, "Trajets", currentRoutesCount, R.drawable.ic_directions_outline, false);
         setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, false);
 
         layoutProfileGroupsSection.setVisibility(View.GONE);
+        recyclerProfileRoutes.setVisibility(View.GONE);
 
         if (currentUserPosts == null || currentUserPosts.isEmpty()) {
             recyclerProfilePhotos.setVisibility(View.GONE);
@@ -279,22 +303,30 @@ public class ProfileFragment extends Fragment {
 
     private void showRoutesSection() {
         setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, false);
-        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, true);
+        setTab(tabRoutes, "Trajets", currentRoutesCount, R.drawable.ic_directions_outline, true);
         setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, false);
 
         layoutProfileGroupsSection.setVisibility(View.GONE);
         recyclerProfilePhotos.setVisibility(View.GONE);
-        textProfileSectionPlaceholder.setVisibility(View.VISIBLE);
-        textProfileSectionPlaceholder.setText("Les trajets sauvegardés apparaîtront ici.");
+
+        if (currentRoutesCount == 0) {
+            recyclerProfileRoutes.setVisibility(View.GONE);
+            textProfileSectionPlaceholder.setVisibility(View.VISIBLE);
+            textProfileSectionPlaceholder.setText("Les trajets sauvegardés apparaîtront ici.");
+        } else {
+            textProfileSectionPlaceholder.setVisibility(View.GONE);
+            recyclerProfileRoutes.setVisibility(View.VISIBLE);
+        }
     }
 
     private void showGroupsSection() {
         setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, false);
-        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
+        setTab(tabRoutes, "Trajets", currentRoutesCount, R.drawable.ic_directions_outline, false);
         setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, true);
 
         textProfileSectionPlaceholder.setVisibility(View.GONE);
         recyclerProfilePhotos.setVisibility(View.GONE);
+        recyclerProfileRoutes.setVisibility(View.GONE);
         layoutProfileGroupsSection.setVisibility(View.VISIBLE);
     }
 
@@ -329,6 +361,29 @@ public class ProfileFragment extends Fragment {
 
         if (requireActivity() instanceof MainActivity) {
             ((MainActivity) requireActivity()).openFragmentWithBackStack(fragment);
+        }
+    }
+
+    private void openSavedRouteDetail(SavedRouteEntity savedRoute) {
+        if (savedRoute == null) return;
+
+        try {
+            RouteOption routeOption = RouteJsonMapper.fromEntity(savedRoute);
+
+            RouteDetailFragment fragment = new RouteDetailFragment();
+
+            Bundle args = new Bundle();
+            args.putSerializable("routeOption", routeOption);
+            fragment.setArguments(args);
+
+            if (requireActivity() instanceof MainActivity) {
+                ((MainActivity) requireActivity()).openFragmentWithBackStack(fragment);
+            }
+
+        } catch (JSONException e) {
+            Toast.makeText(requireContext(),
+                    "Impossible d'ouvrir ce trajet.",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -616,7 +671,7 @@ public class ProfileFragment extends Fragment {
 
                 setStat(statTrips, String.valueOf(voyagesCount), "Voyages");
 
-                loadGroupCount(userId, photosCount);
+                loadSavedRoutesCount(userId, photosCount);
                 showPhotosSection();
             }
 
@@ -627,6 +682,30 @@ public class ProfileFragment extends Fragment {
                 Toast.makeText(requireContext(),
                         "Impossible de charger les statistiques.",
                         Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void loadSavedRoutesCount(String userId, int photosCount) {
+        savedRouteRepository.getAllSavedRoutes(new SavedRouteRepository.LoadRoutesCallback() {
+            @Override
+            public void onSuccess(List<SavedRouteEntity> routes) {
+                if (!isAdded()) return;
+
+                currentRoutesCount = routes == null ? 0 : routes.size();
+                savedRouteAdapter.submitList(routes);
+
+                loadGroupCount(userId, photosCount);
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) return;
+
+                currentRoutesCount = 0;
+                savedRouteAdapter.submitList(new ArrayList<>());
+
+                loadGroupCount(userId, photosCount);
             }
         });
     }
@@ -646,14 +725,14 @@ public class ProfileFragment extends Fragment {
                 } else {
                     textProfileGroupsStatus.setText("Vos groupes de voyage");
                 }
-                updateTabCounts(photosCount, 0, groupsCount);
+                updateTabCounts(photosCount, currentRoutesCount, groupsCount);
             }
 
             @Override
             public void onError(Exception e) {
                 if (!isAdded()) return;
 
-                updateTabCounts(photosCount, 0, 0);
+                updateTabCounts(photosCount, currentRoutesCount, 0);
             }
         });
     }
