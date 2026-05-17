@@ -53,6 +53,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 import com.example.traveling.repositories.TravelShareAiRepository;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.media.MediaRecorder;
+
+import androidx.core.content.ContextCompat;
+
+import java.io.File;
+import java.io.IOException;
+import android.widget.ProgressBar;
+import android.media.MediaPlayer;
 
 public class NewPostFragment extends Fragment {
 
@@ -72,6 +82,26 @@ public class NewPostFragment extends Fragment {
     private ArrayAdapter<LocationSuggestion> locationAdapter;
     private LocationSuggestion selectedLocationSuggestion;
     private String latestLocationQuery = "";
+
+    private MaterialButton buttonRecordVoice;
+    private MaterialButton buttonDeleteVoice;
+    private android.widget.TextView textVoiceStatus;
+    private android.widget.ImageButton buttonPlayVoice;
+
+    private MediaPlayer voicePlayer;
+    private boolean isPlayingVoice = false;
+    private MediaRecorder mediaRecorder;
+    private boolean isRecordingVoice = false;
+    private File recordedAudioFile;
+
+    private ActivityResultLauncher<String> audioPermissionLauncher;
+    private android.widget.TextView textVoiceTimer;
+    private ProgressBar progressVoice;
+
+    private static final int MAX_VOICE_SECONDS = 60;
+    private int voiceElapsedSeconds = 0;
+    private final Handler voiceTimerHandler = new Handler(Looper.getMainLooper());
+    private Runnable voiceTimerRunnable;
 
     private final Handler locationSearchHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingLocationSearch;
@@ -120,6 +150,19 @@ public class NewPostFragment extends Fragment {
                     }
                 }
         );
+
+        audioPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                isGranted -> {
+                    if (isGranted) {
+                        startVoiceRecording();
+                    } else {
+                        Toast.makeText(requireContext(),
+                                "Permission microphone refusée.",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
     }
 
     @Nullable
@@ -150,6 +193,12 @@ public class NewPostFragment extends Fragment {
         layoutGroupDropdown = view.findViewById(R.id.layoutGroupDropdown);
         dropdownGroup = view.findViewById(R.id.dropdownGroup);
         editTags = view.findViewById(R.id.editTags);
+        buttonRecordVoice = view.findViewById(R.id.buttonRecordVoice);
+        buttonDeleteVoice = view.findViewById(R.id.buttonDeleteVoice);
+        buttonPlayVoice = view.findViewById(R.id.buttonPlayVoice);
+        textVoiceStatus = view.findViewById(R.id.textVoiceStatus);
+        textVoiceTimer = view.findViewById(R.id.textVoiceTimer);
+        progressVoice = view.findViewById(R.id.progressVoice);
 
         postRepository = new PostRepository();
         userRepository = new UserRepository();
@@ -171,6 +220,9 @@ public class NewPostFragment extends Fragment {
         buttonChooseImage.setOnClickListener(chooseImageListener);
         cardImagePicker.setOnClickListener(chooseImageListener);
         buttonSuggestWithAi.setOnClickListener(v -> suggestWithAi());
+        buttonRecordVoice.setOnClickListener(v -> toggleVoiceRecording());
+        buttonPlayVoice.setOnClickListener(v -> toggleVoicePlayback());
+        buttonDeleteVoice.setOnClickListener(v -> deleteVoiceRecording());
     }
 
     private void setupPlaceTypeDropdown() {
@@ -486,6 +538,216 @@ public class NewPostFragment extends Fragment {
                 );
             }
         });
+    }
+
+    private void toggleVoiceRecording() {
+        if (isRecordingVoice) {
+            stopVoiceRecording();
+            return;
+        }
+
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED) {
+            startVoiceRecording();
+        } else {
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
+        }
+    }
+
+    private void startVoiceRecording() {
+        try {
+            recordedAudioFile = new File(
+                    requireContext().getCacheDir(),
+                    "voice_note_" + System.currentTimeMillis() + ".m4a"
+            );
+
+            mediaRecorder = new MediaRecorder();
+            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            mediaRecorder.setOutputFile(recordedAudioFile.getAbsolutePath());
+            mediaRecorder.prepare();
+            mediaRecorder.start();
+
+            isRecordingVoice = true;
+            buttonRecordVoice.setText("Arrêter");
+            buttonDeleteVoice.setEnabled(false);
+            textVoiceStatus.setText("Enregistrement en cours...");
+            startVoiceTimer();
+
+        } catch (IOException | RuntimeException e) {
+            releaseMediaRecorder();
+
+            Toast.makeText(requireContext(),
+                    "Impossible de démarrer l'enregistrement.",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void stopVoiceRecording() {
+        try {
+            if (mediaRecorder != null) {
+                mediaRecorder.stop();
+            }
+
+            isRecordingVoice = false;
+            releaseMediaRecorder();
+
+            buttonRecordVoice.setText("Réenregistrer");
+            buttonDeleteVoice.setEnabled(true);
+            buttonPlayVoice.setEnabled(true);
+            textVoiceStatus.setText("Note vocale enregistrée.");
+            stopVoiceTimer(false);
+
+        } catch (RuntimeException e) {
+            releaseMediaRecorder();
+            deleteVoiceRecording();
+
+            Toast.makeText(requireContext(),
+                    "Enregistrement invalide.",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void deleteVoiceRecording() {
+        if (isRecordingVoice) {
+            stopVoiceRecording();
+        }
+
+        if (recordedAudioFile != null && recordedAudioFile.exists()) {
+            recordedAudioFile.delete();
+        }
+
+        recordedAudioFile = null;
+        uploadedAudioUrl = null;
+
+        buttonRecordVoice.setText("Enregistrer");
+        buttonDeleteVoice.setEnabled(false);
+        textVoiceStatus.setText("Aucune note vocale enregistrée.");
+        stopVoicePlayback();
+        buttonPlayVoice.setEnabled(false);
+        buttonPlayVoice.setImageResource(R.drawable.ic_play_arrow);
+        stopVoiceTimer(true);
+    }
+
+    private void toggleVoicePlayback() {
+        if (isPlayingVoice) {
+            stopVoicePlayback();
+            return;
+        }
+
+        playVoiceRecording();
+    }
+
+    private void playVoiceRecording() {
+        if (recordedAudioFile == null || !recordedAudioFile.exists()) {
+            Toast.makeText(requireContext(),
+                    "Aucune note vocale à écouter.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            stopVoicePlayback();
+
+            voicePlayer = new MediaPlayer();
+            voicePlayer.setDataSource(recordedAudioFile.getAbsolutePath());
+            voicePlayer.prepare();
+            voicePlayer.start();
+
+            isPlayingVoice = true;
+            buttonPlayVoice.setImageResource(R.drawable.ic_stop);
+
+            voicePlayer.setOnCompletionListener(mp -> stopVoicePlayback());
+
+        } catch (Exception e) {
+            stopVoicePlayback();
+
+            Toast.makeText(requireContext(),
+                    "Impossible de lire la note vocale.",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void stopVoicePlayback() {
+        if (voicePlayer != null) {
+            try {
+                if (voicePlayer.isPlaying()) {
+                    voicePlayer.stop();
+                }
+
+                voicePlayer.release();
+            } catch (RuntimeException ignored) {
+            }
+
+            voicePlayer = null;
+        }
+
+        isPlayingVoice = false;
+
+        if (buttonPlayVoice != null) {
+            buttonPlayVoice.setImageResource(R.drawable.ic_play_arrow);
+        }
+    }
+
+    private void releaseMediaRecorder() {
+        if (mediaRecorder != null) {
+            try {
+                mediaRecorder.release();
+            } catch (RuntimeException ignored) {
+            }
+
+            mediaRecorder = null;
+        }
+    }
+
+    private void startVoiceTimer() {
+        voiceElapsedSeconds = 0;
+        updateVoiceTimerUi();
+
+        voiceTimerRunnable = new Runnable() {
+            @Override
+            public void run() {
+                voiceElapsedSeconds++;
+                updateVoiceTimerUi();
+
+                if (voiceElapsedSeconds >= MAX_VOICE_SECONDS) {
+                    stopVoiceRecording();
+                    Toast.makeText(requireContext(),
+                            "Durée maximale atteinte.",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                voiceTimerHandler.postDelayed(this, 1000);
+            }
+        };
+
+        voiceTimerHandler.postDelayed(voiceTimerRunnable, 1000);
+    }
+
+    private void stopVoiceTimer(boolean reset) {
+        if (voiceTimerRunnable != null) {
+            voiceTimerHandler.removeCallbacks(voiceTimerRunnable);
+            voiceTimerRunnable = null;
+        }
+
+        if (reset) {
+            voiceElapsedSeconds = 0;
+            updateVoiceTimerUi();
+        }
+    }
+
+    private void updateVoiceTimerUi() {
+        int minutes = voiceElapsedSeconds / 60;
+        int seconds = voiceElapsedSeconds % 60;
+
+        textVoiceTimer.setText(String.format(java.util.Locale.getDefault(), "%02d:%02d", minutes, seconds));
+
+        if (progressVoice != null) {
+            progressVoice.setMax(MAX_VOICE_SECONDS);
+            progressVoice.setProgress(voiceElapsedSeconds);
+        }
     }
 
     private void suggestWithAi() {
@@ -828,5 +1090,20 @@ public class NewPostFragment extends Fragment {
         }
 
         return tags;
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (isRecordingVoice) {
+            try {
+                stopVoiceRecording();
+            } catch (Exception ignored) {
+            }
+        }
+
+        releaseMediaRecorder();
+        stopVoiceTimer(false);
+        stopVoicePlayback();
+        super.onDestroyView();
     }
 }
