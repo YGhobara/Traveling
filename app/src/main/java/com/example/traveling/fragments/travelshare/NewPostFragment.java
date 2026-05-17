@@ -822,7 +822,8 @@ public class NewPostFragment extends Fragment {
                                                   String groupId,
                                                   String groupName) {
         if (selectedImageUri == null) {
-            createPost(userId, authorName, caption, location, latitude, longitude, photonPlaceId, placeType, fallbackImageUrl, publicPost, groupId, groupName);
+            uploadAudioIfNeededAndCreatePost(userId, authorName, caption, location, latitude, longitude,
+                    photonPlaceId, placeType, fallbackImageUrl, publicPost, groupId, groupName);
             return;
         }
 
@@ -860,7 +861,8 @@ public class NewPostFragment extends Fragment {
 
                         String uploadedImageUrl = secureUrlObject.toString();
 
-                        createPost(userId, authorName, caption, location, latitude, longitude, photonPlaceId, placeType, uploadedImageUrl, publicPost, groupId, groupName);
+                        uploadAudioIfNeededAndCreatePost(userId, authorName, caption, location, latitude, longitude,
+                                photonPlaceId, placeType, uploadedImageUrl, publicPost, groupId, groupName);
                     }
 
                     @Override
@@ -878,6 +880,80 @@ public class NewPostFragment extends Fragment {
                     @Override
                     public void onReschedule(String requestId, ErrorInfo error) {
                         // Upload rescheduled
+                    }
+                })
+                .dispatch();
+    }
+
+    private void uploadAudioIfNeededAndCreatePost(String userId,
+                                                  String authorName,
+                                                  String caption,
+                                                  String location,
+                                                  double latitude,
+                                                  double longitude,
+                                                  String photonPlaceId,
+                                                  String placeType,
+                                                  String imageUrl,
+                                                  boolean publicPost,
+                                                  String groupId,
+                                                  String groupName) {
+        if (recordedAudioFile == null || !recordedAudioFile.exists()) {
+            createPost(userId, authorName, caption, location, latitude, longitude,
+                    photonPlaceId, placeType, imageUrl, publicPost, groupId, groupName);
+            return;
+        }
+
+        buttonPublish.setText("Téléversement audio...");
+
+        MediaManager.get()
+                .upload(recordedAudioFile.getAbsolutePath())
+                .unsigned(CLOUDINARY_UPLOAD_PRESET)
+                .option("resource_type", "video")
+                .callback(new UploadCallback() {
+                    @Override
+                    public void onStart(String requestId) {
+                    }
+
+                    @Override
+                    public void onProgress(String requestId, long bytes, long totalBytes) {
+                    }
+
+                    @Override
+                    public void onSuccess(String requestId, Map resultData) {
+                        if (!isAdded()) return;
+
+                        Object secureUrlObject = resultData.get("secure_url");
+
+                        if (secureUrlObject == null) {
+                            buttonPublish.setEnabled(true);
+                            buttonPublish.setText("Publier");
+
+                            Toast.makeText(requireContext(),
+                                    "Erreur : URL audio Cloudinary introuvable.",
+                                    Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        uploadedAudioUrl = secureUrlObject.toString();
+
+                        createPost(userId, authorName, caption, location, latitude, longitude,
+                                photonPlaceId, placeType, imageUrl, publicPost, groupId, groupName);
+                    }
+
+                    @Override
+                    public void onError(String requestId, ErrorInfo error) {
+                        if (!isAdded()) return;
+
+                        buttonPublish.setEnabled(true);
+                        buttonPublish.setText("Publier");
+
+                        Toast.makeText(requireContext(),
+                                "Erreur audio : " + error.getDescription(),
+                                Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onReschedule(String requestId, ErrorInfo error) {
                     }
                 })
                 .dispatch();
