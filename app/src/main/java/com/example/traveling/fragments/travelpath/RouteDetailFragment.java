@@ -34,6 +34,13 @@ import com.example.traveling.repositories.SavedRouteRepository;
 import com.example.traveling.utils.RouteJsonMapper;
 
 import org.json.JSONException;
+import android.net.Uri;
+
+import androidx.core.content.FileProvider;
+
+import com.example.traveling.utils.RoutePdfExporter;
+
+import java.io.File;
 
 public class RouteDetailFragment extends Fragment {
     private SavedRouteRepository savedRouteRepository;
@@ -105,9 +112,7 @@ public class RouteDetailFragment extends Fragment {
 
         buttonShareRoute.setOnClickListener(v -> shareRoute());
 
-        buttonExportRoutePdf.setOnClickListener(v ->
-                Toast.makeText(requireContext(), "Export PDF bientôt ajouté.", Toast.LENGTH_SHORT).show()
-        );
+        buttonExportRoutePdf.setOnClickListener(v -> exportRoutePdf());
     }
 
     private void saveRouteLocally() {
@@ -140,6 +145,32 @@ public class RouteDetailFragment extends Fragment {
 
         } catch (JSONException e) {
             Toast.makeText(requireContext(), "Erreur de préparation du parcours.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void exportRoutePdf() {
+        try {
+            File pdfFile = RoutePdfExporter.exportRouteToPdf(requireContext(), routeOption);
+
+            Uri pdfUri = FileProvider.getUriForFile(
+                    requireContext(),
+                    requireContext().getPackageName() + ".fileprovider",
+                    pdfFile
+            );
+
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("application/pdf");
+            intent.putExtra(Intent.EXTRA_STREAM, pdfUri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            startActivity(Intent.createChooser(intent, "Exporter le parcours en PDF"));
+
+        } catch (Exception e) {
+            Toast.makeText(
+                    requireContext(),
+                    "Erreur lors de l'export PDF.",
+                    Toast.LENGTH_SHORT
+            ).show();
         }
     }
 
