@@ -40,6 +40,7 @@ public class RouteJsonMapper {
     public static JSONObject toJson(RouteOption routeOption) throws JSONException {
         JSONObject object = new JSONObject();
 
+        object.put("imageUrl", routeOption.getImageUrl());
         object.put("title", routeOption.getTitle());
         object.put("type", routeOption.getType());
         object.put("summary", routeOption.getSummary());
@@ -81,6 +82,7 @@ public class RouteJsonMapper {
     public static RouteOption fromJson(JSONObject object) throws JSONException {
         RouteOption routeOption = new RouteOption();
 
+        routeOption.setImageUrl(object.optString("imageUrl"));
         routeOption.setTitle(object.optString("title"));
         routeOption.setType(object.optString("type"));
         routeOption.setSummary(object.optString("summary"));

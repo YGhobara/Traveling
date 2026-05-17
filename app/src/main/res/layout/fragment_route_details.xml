@@ -44,6 +44,16 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
+            <ImageView
+                android:id="@+id/imageRouteDetail"
+                android:layout_width="match_parent"
+                android:layout_height="190dp"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_post_placeholder"
+                android:contentDescription="Image du parcours"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/textRouteDetailSummary"
                 android:layout_width="match_parent"

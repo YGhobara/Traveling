@@ -41,6 +41,10 @@ import androidx.core.content.FileProvider;
 import com.example.traveling.utils.RoutePdfExporter;
 
 import java.io.File;
+import android.text.TextUtils;
+import android.widget.ImageView;
+
+import com.bumptech.glide.Glide;
 
 public class RouteDetailFragment extends Fragment {
     private SavedRouteRepository savedRouteRepository;
@@ -48,6 +52,7 @@ public class RouteDetailFragment extends Fragment {
     private MaterialButton buttonSaveRoute;
     private MaterialButton buttonShareRoute;
     private MaterialButton buttonExportRoutePdf;
+    private ImageView imageRouteDetail;
     private RouteOption routeOption;
 
     public RouteDetailFragment() {
@@ -238,6 +243,8 @@ public class RouteDetailFragment extends Fragment {
     }
 
     private void bindRoute(View view) {
+        imageRouteDetail = view.findViewById(R.id.imageRouteDetail);
+        bindRouteImage();
         TextView textTitle = view.findViewById(R.id.textRouteDetailTitle);
         TextView textSummary = view.findViewById(R.id.textRouteDetailSummary);
         TextView textBudget = view.findViewById(R.id.textRouteDetailBudget);
@@ -268,6 +275,26 @@ public class RouteDetailFragment extends Fragment {
         if (textEffort != null) {
             textEffort.setText(routeOption.getEffortLevel());
         }
+    }
+
+    private void bindRouteImage() {
+        if (imageRouteDetail == null) {
+            return;
+        }
+
+        if (TextUtils.isEmpty(routeOption.getImageUrl())) {
+            imageRouteDetail.setVisibility(View.GONE);
+            return;
+        }
+
+        imageRouteDetail.setVisibility(View.VISIBLE);
+
+        Glide.with(requireContext())
+                .load(routeOption.getImageUrl())
+                .centerCrop()
+                .placeholder(R.drawable.bg_post_placeholder)
+                .error(R.drawable.bg_post_placeholder)
+                .into(imageRouteDetail);
     }
 
     private void bindSteps(LinearLayout containerSteps) {
