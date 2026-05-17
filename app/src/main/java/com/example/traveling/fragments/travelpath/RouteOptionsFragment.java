@@ -25,12 +25,15 @@ import com.example.traveling.models.RoutePreferences;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ArrayList;
+import com.google.android.material.button.MaterialButton;
+
 public class RouteOptionsFragment extends Fragment {
     private ArrayList<RouteOption> generatedRoutes = new ArrayList<>();
     private RoutePreferences routePreferences;
     private TravelPathAiRepository travelPathAiRepository;
     private TextView textRouteOptionsTitle;
     private TextView textRouteStatus;
+    private MaterialButton buttonRegenerateRoutes;
     private ProgressBar progressRouteGeneration;
     private RecyclerView recyclerRouteOptions;
     private RouteOptionAdapter routeOptionAdapter;
@@ -78,7 +81,7 @@ public class RouteOptionsFragment extends Fragment {
         bindViews(view);
         setupBackButton(view);
         setupRecycler();
-
+        setupRegenerateButton();
         travelPathAiRepository = new TravelPathAiRepository();
 
         if (!generatedRoutes.isEmpty()) {
@@ -86,6 +89,14 @@ public class RouteOptionsFragment extends Fragment {
         } else {
             generateRoutesWithAi();
         }
+    }
+
+    private void setupRegenerateButton() {
+        buttonRegenerateRoutes.setOnClickListener(v -> {
+            generatedRoutes.clear();
+            routeOptionAdapter.submitList(new ArrayList<>());
+            generateRoutesWithAi();
+        });
     }
 
     private void showGeneratedRoutes(List<RouteOption> routes) {
@@ -100,7 +111,7 @@ public class RouteOptionsFragment extends Fragment {
         textRouteStatus = view.findViewById(R.id.textRouteStatus);
         progressRouteGeneration = view.findViewById(R.id.progressRouteGeneration);
         recyclerRouteOptions = view.findViewById(R.id.recyclerRouteOptions);
-
+        buttonRegenerateRoutes = view.findViewById(R.id.buttonRegenerateRoutes);
         textRouteOptionsTitle.setText("Options pour " + routePreferences.getDestination());
     }
 
@@ -178,6 +189,10 @@ public class RouteOptionsFragment extends Fragment {
         progressRouteGeneration.setVisibility(loading ? View.VISIBLE : View.GONE);
         recyclerRouteOptions.setVisibility(loading ? View.GONE : View.VISIBLE);
         textRouteStatus.setVisibility(View.VISIBLE);
+
+        if (buttonRegenerateRoutes != null) {
+            buttonRegenerateRoutes.setEnabled(!loading);
+        }
 
         if (loading) {
             textRouteStatus.setText("Génération des parcours...");

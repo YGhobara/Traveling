@@ -53,7 +53,7 @@ public class RouteOptionAdapter extends RecyclerView.Adapter<RouteOptionAdapter.
         RouteOption route = routes.get(position);
 
         holder.textRouteTitle.setText(route.getTitle());
-        holder.textRouteType.setText(route.getType());
+        holder.textRouteType.setText(formatRouteType(route.getType()));
         holder.textRouteSummary.setText(route.getSummary());
 
         holder.textRouteBudget.setText(String.format(Locale.FRANCE, "%.0f €", route.getEstimatedBudget()));
@@ -76,6 +76,23 @@ public class RouteOptionAdapter extends RecyclerView.Adapter<RouteOptionAdapter.
     @Override
     public int getItemCount() {
         return routes.size();
+    }
+
+    private String formatRouteType(String type) {
+        if (type == null) {
+            return "Parcours";
+        }
+
+        switch (type) {
+            case "ECONOMIC":
+                return "Économique";
+            case "BALANCED":
+                return "Équilibré";
+            case "COMFORT":
+                return "Confort";
+            default:
+                return type;
+        }
     }
 
     private String formatDuration(int minutes) {
