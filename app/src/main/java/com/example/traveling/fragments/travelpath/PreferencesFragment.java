@@ -25,6 +25,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import android.widget.Filter;
 
 public class PreferencesFragment extends Fragment {
 
@@ -119,14 +120,46 @@ public class PreferencesFragment extends Fragment {
     }
 
     private void setDropdown(AutoCompleteTextView dropdown, List<String> values, String defaultValue) {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
                 requireContext(),
                 android.R.layout.simple_dropdown_item_1line,
-                values
-        );
+                new ArrayList<>(values)
+        ) {
+            @NonNull
+            @Override
+            public Filter getFilter() {
+                return new Filter() {
+                    @Override
+                    protected FilterResults performFiltering(CharSequence constraint) {
+                        FilterResults results = new FilterResults();
+                        results.values = values;
+                        results.count = values.size();
+                        return results;
+                    }
+
+                    @Override
+                    protected void publishResults(CharSequence constraint, FilterResults results) {
+                        clear();
+                        addAll(values);
+                        notifyDataSetChanged();
+                    }
+                };
+            }
+        };
 
         dropdown.setAdapter(adapter);
         dropdown.setText(defaultValue, false);
+        dropdown.setInputType(0);
+        dropdown.setKeyListener(null);
+        dropdown.setThreshold(0);
+
+        dropdown.setOnClickListener(v -> dropdown.showDropDown());
+
+        dropdown.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                dropdown.showDropDown();
+            }
+        });
     }
 
     private void setupGenerateButton() {
