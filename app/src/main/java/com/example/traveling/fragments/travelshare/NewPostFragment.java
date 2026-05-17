@@ -52,6 +52,7 @@ import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import com.example.traveling.repositories.TravelShareAiRepository;
 
 public class NewPostFragment extends Fragment {
 
@@ -66,6 +67,8 @@ public class NewPostFragment extends Fragment {
     private PhotonRepository photonRepository;
     private NotificationRepository notificationRepository;
     private FollowRepository followRepository;
+    private TravelShareAiRepository travelShareAiRepository;
+    private MaterialButton buttonSuggestWithAi;
     private ArrayAdapter<LocationSuggestion> locationAdapter;
     private LocationSuggestion selectedLocationSuggestion;
     private String latestLocationQuery = "";
@@ -79,6 +82,9 @@ public class NewPostFragment extends Fragment {
     private ImageView imagePreview;
     private MaterialButton buttonChooseImage;
     private Uri selectedImageUri;
+    private List<String> suggestedTags = new ArrayList<>();
+    private TextInputEditText editTags;
+    private String uploadedAudioUrl = null;
 
     private ActivityResultLauncher<String> imagePickerLauncher;
     private static final String CLOUDINARY_UPLOAD_PRESET = "traveling_unsigned";
@@ -134,6 +140,7 @@ public class NewPostFragment extends Fragment {
         editImageUrl = view.findViewById(R.id.editImageUrl);
         switchPublic = view.findViewById(R.id.switchPublic);
         buttonPublish = view.findViewById(R.id.buttonPublish);
+        buttonSuggestWithAi = view.findViewById(R.id.buttonSuggestWithAi);
         imagePreview = view.findViewById(R.id.imagePreview);
         cardImagePicker = view.findViewById(R.id.cardImagePicker);
         layoutImagePlaceholder = view.findViewById(R.id.layoutImagePlaceholder);
@@ -142,6 +149,7 @@ public class NewPostFragment extends Fragment {
         switchShareToGroup = view.findViewById(R.id.switchShareToGroup);
         layoutGroupDropdown = view.findViewById(R.id.layoutGroupDropdown);
         dropdownGroup = view.findViewById(R.id.dropdownGroup);
+        editTags = view.findViewById(R.id.editTags);
 
         postRepository = new PostRepository();
         userRepository = new UserRepository();
@@ -149,6 +157,7 @@ public class NewPostFragment extends Fragment {
         groupRepository = new GroupRepository();
         notificationRepository = new NotificationRepository();
         followRepository = new FollowRepository();
+        travelShareAiRepository = new TravelShareAiRepository(requireContext());
 
         setupPlaceTypeDropdown();
         setupLocationAutocomplete();
@@ -161,6 +170,7 @@ public class NewPostFragment extends Fragment {
 
         buttonChooseImage.setOnClickListener(chooseImageListener);
         cardImagePicker.setOnClickListener(chooseImageListener);
+        buttonSuggestWithAi.setOnClickListener(v -> suggestWithAi());
     }
 
     private void setupPlaceTypeDropdown() {
@@ -428,7 +438,8 @@ public class NewPostFragment extends Fragment {
             selectedGroupId = null;
             selectedGroupName = null;
         }
-
+        suggestedTags.clear();
+        suggestedTags.addAll(parseTagsFromInput());
         buttonPublish.setEnabled(false);
 
         userRepository.getUserProfile(currentUser.getUid(), new UserRepository.OnUserProfileLoadedListener() {
@@ -475,6 +486,65 @@ public class NewPostFragment extends Fragment {
                 );
             }
         });
+    }
+
+    private void suggestWithAi() {
+        if (selectedImageUri == null) {
+            Toast.makeText(requireContext(),
+                    "Choisissez d'abord une image.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        buttonSuggestWithAi.setEnabled(false);
+        buttonSuggestWithAi.setText("Analyse en cours...");
+
+        travelShareAiRepository.suggestPostMetadata(
+                selectedImageUri,
+                new TravelShareAiRepository.SuggestPostMetadataCallback() {
+                    @Override
+                    public void onSuccess(TravelShareAiRepository.PostMetadataSuggestion suggestion) {
+                        if (!isAdded()) return;
+
+                        buttonSuggestWithAi.setEnabled(true);
+                        buttonSuggestWithAi.setText("Suggérer avec IA");
+
+                        if (suggestion.getTags() != null) {
+                            suggestedTags.clear();
+                            suggestedTags.addAll(suggestion.getTags());
+
+                            if (suggestion.getTags() != null && !suggestion.getTags().isEmpty()) {
+                                editTags.setText(TextUtils.join(", ", suggestion.getTags()));
+                            }
+                        }
+
+                        if (!TextUtils.isEmpty(suggestion.getPlaceType())) {
+                            dropdownPlaceType.setText(suggestion.getPlaceType(), false);
+                        }
+
+                        if (TextUtils.isEmpty(getText(editCaption))
+                                && !TextUtils.isEmpty(suggestion.getSuggestedCaption())) {
+                            editCaption.setText(suggestion.getSuggestedCaption());
+                        }
+
+                        Toast.makeText(requireContext(),
+                                "Suggestions IA ajoutées.",
+                                Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(Exception exception) {
+                        if (!isAdded()) return;
+
+                        buttonSuggestWithAi.setEnabled(true);
+                        buttonSuggestWithAi.setText("Suggérer avec IA");
+
+                        Toast.makeText(requireContext(),
+                                "Erreur IA : " + exception.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
     }
 
     private void uploadImageIfNeededAndCreatePost(String userId,
@@ -584,6 +654,8 @@ public class NewPostFragment extends Fragment {
         );
 
         post.setLikedBy(new ArrayList<>());
+        post.setTags(new ArrayList<>(suggestedTags));
+        post.setAudioUrl(uploadedAudioUrl);
 
         postRepository.createPostAndReturnId(post, new PostRepository.OnPostCreatedListener() {
             @Override
@@ -728,5 +800,33 @@ public class NewPostFragment extends Fragment {
         }
 
         return editText.getText().toString().trim();
+    }
+
+    private List<String> parseTagsFromInput() {
+        List<String> tags = new ArrayList<>();
+
+        String rawTags = getText(editTags);
+
+        if (TextUtils.isEmpty(rawTags)) {
+            return tags;
+        }
+
+        String[] parts = rawTags.split(",");
+
+        for (String part : parts) {
+            String tag = part.trim();
+
+            if (tag.startsWith("#")) {
+                tag = tag.substring(1).trim();
+            }
+
+            tag = tag.replaceAll("\\s+", " ");
+
+            if (!TextUtils.isEmpty(tag) && !tags.contains(tag)) {
+                tags.add(tag);
+            }
+        }
+
+        return tags;
     }
 }

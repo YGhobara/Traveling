@@ -178,10 +178,24 @@
             android:paddingStart="14dp"
             android:paddingTop="6dp"
             android:paddingEnd="14dp"
-            android:paddingBottom="14dp"
+            android:paddingBottom="6dp"
             android:text="Caption"
             android:textColor="#111827"
             android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/textTags"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="14dp"
+            android:paddingTop="0dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="14dp"
+            android:text="#nature #voyage"
+            android:textColor="@color/travel_primary"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
 
     </LinearLayout>
 

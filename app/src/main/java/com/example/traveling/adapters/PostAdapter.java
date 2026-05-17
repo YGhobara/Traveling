@@ -100,6 +100,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         holder.textPostDate.setText(formatRelativeTime(post.getCreatedAt()));
         displayAuthorAvatar(holder, post);
         holder.textCaption.setText(post.getCaption());
+        bindTags(holder, post);
         holder.textLikeCount.setText(String.valueOf(post.getLikeCount()));
         holder.textCommentCount.setText(String.valueOf(post.getCommentCount()));
 
@@ -188,6 +189,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         TextView textCaption;
         TextView textLikeCount;
         TextView textCommentCount;
+        TextView textTags;
         ImageView imagePost;
         ImageButton buttonLike;
         ImageButton buttonComment;
@@ -200,6 +202,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             textCaption = itemView.findViewById(R.id.textCaption);
             textLikeCount = itemView.findViewById(R.id.textLikeCount);
             textCommentCount = itemView.findViewById(R.id.textCommentCount);
+            textTags = itemView.findViewById(R.id.textTags);
             imagePost = itemView.findViewById(R.id.imagePost);
             buttonLike = itemView.findViewById(R.id.buttonLike);
             buttonComment = itemView.findViewById(R.id.buttonComment);
@@ -296,5 +299,39 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         }
 
         return name.trim().substring(0, 1).toUpperCase();
+    }
+
+    private void bindTags(PostViewHolder holder, Post post) {
+        if (post.getTags() == null || post.getTags().isEmpty()) {
+            holder.textTags.setVisibility(View.GONE);
+            return;
+        }
+
+        List<String> visibleTags = post.getTags();
+
+        StringBuilder builder = new StringBuilder();
+
+        int maxTags = Math.min(visibleTags.size(), 5);
+
+        for (int i = 0; i < maxTags; i++) {
+            String tag = visibleTags.get(i);
+
+            if (TextUtils.isEmpty(tag)) {
+                continue;
+            }
+
+            if (builder.length() > 0) {
+                builder.append("  ");
+            }
+
+            builder.append("#").append(tag.trim().replace(" ", "_"));
+        }
+
+        if (builder.length() == 0) {
+            holder.textTags.setVisibility(View.GONE);
+        } else {
+            holder.textTags.setText(builder.toString());
+            holder.textTags.setVisibility(View.VISIBLE);
+        }
     }
 }

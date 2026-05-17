@@ -23,6 +23,8 @@ public class Post {
     private String groupId;
     private String groupName;
     private List<String> likedBy = new ArrayList<>();
+    private List<String> tags = new ArrayList<>();
+    private String audioUrl;
     public Post() {
         // Required empty constructor for Firestore
     }
@@ -48,6 +50,32 @@ public class Post {
         this.publicPost = publicPost;
         this.groupId = groupId;
         this.groupName = groupName;
+    }
+
+    public Post(String id, String userId, String authorName, String caption,
+                String imageUrl, String locationName, double latitude, double longitude,
+                String photonPlaceId, String placeType, long createdAt,
+                int likeCount, int commentCount, boolean publicPost,
+                String groupId, String groupName,
+                List<String> tags, String audioUrl) {
+        this.id = id;
+        this.userId = userId;
+        this.authorName = authorName;
+        this.caption = caption;
+        this.imageUrl = imageUrl;
+        this.locationName = locationName;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.photonPlaceId = photonPlaceId;
+        this.placeType = placeType;
+        this.createdAt = createdAt;
+        this.likeCount = likeCount;
+        this.commentCount = commentCount;
+        this.publicPost = publicPost;
+        this.groupId = groupId;
+        this.groupName = groupName;
+        this.tags = tags != null ? tags : new ArrayList<>();
+        this.audioUrl = audioUrl;
     }
 
     public String getId() {
@@ -154,6 +182,22 @@ public class Post {
         return likedBy != null && likedBy.contains(userId);
     }
 
+    public List<String> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags != null ? tags : new ArrayList<>();
+    }
+
+    public String getAudioUrl() {
+        return audioUrl;
+    }
+
+    public void setAudioUrl(String audioUrl) {
+        this.audioUrl = audioUrl;
+    }
+
     public boolean isPublicPost() {
         return publicPost;
     }
@@ -189,5 +233,15 @@ public class Post {
     @Exclude
     public boolean isGroupPost() {
         return groupId != null && !groupId.trim().isEmpty();
+    }
+
+    @Exclude
+    public boolean hasAudio() {
+        return audioUrl != null && !audioUrl.trim().isEmpty();
+    }
+
+    @Exclude
+    public boolean hasTags() {
+        return tags != null && !tags.isEmpty();
     }
 }
