@@ -35,6 +35,9 @@ public class RouteOptionsFragment extends Fragment {
     private TravelPathAiRepository travelPathAiRepository;
     private OpenMeteoRepository openMeteoRepository;
     private TextView textRouteOptionsTitle;
+    private TextView textWeatherSummary;
+    private View layoutWeatherSummary;
+    private WeatherForecastSummary currentWeatherSummary;
     private TextView textRouteStatus;
     private MaterialButton buttonRegenerateRoutes;
     private ProgressBar progressRouteGeneration;
@@ -89,6 +92,7 @@ public class RouteOptionsFragment extends Fragment {
         openMeteoRepository = new OpenMeteoRepository();
 
         if (!generatedRoutes.isEmpty()) {
+            displayWeatherSummary(currentWeatherSummary);
             showGeneratedRoutes(generatedRoutes);
         } else {
             generateRoutesWithAi();
@@ -113,6 +117,8 @@ public class RouteOptionsFragment extends Fragment {
     private void bindViews(View view) {
         textRouteOptionsTitle = view.findViewById(R.id.textRouteOptionsTitle);
         textRouteStatus = view.findViewById(R.id.textRouteStatus);
+        layoutWeatherSummary = view.findViewById(R.id.layoutWeatherSummary);
+        textWeatherSummary = view.findViewById(R.id.textWeatherSummary);
         progressRouteGeneration = view.findViewById(R.id.progressRouteGeneration);
         recyclerRouteOptions = view.findViewById(R.id.recyclerRouteOptions);
         buttonRegenerateRoutes = view.findViewById(R.id.buttonRegenerateRoutes);
@@ -159,6 +165,8 @@ public class RouteOptionsFragment extends Fragment {
     }
 
     private void callAiWithWeather(WeatherForecastSummary weatherSummary) {
+        currentWeatherSummary = weatherSummary;
+        displayWeatherSummary(currentWeatherSummary);
         travelPathAiRepository.generateRoutes(
                 routePreferences,
                 weatherSummary,
@@ -203,7 +211,26 @@ public class RouteOptionsFragment extends Fragment {
         );
     }
 
+    private void displayWeatherSummary(WeatherForecastSummary weatherSummary) {
+        if (textWeatherSummary == null) {
+            return;
+        }
+
+        if (weatherSummary == null || !weatherSummary.isAvailable()
+                || weatherSummary.getSummaryText() == null
+                || weatherSummary.getSummaryText().trim().isEmpty()) {
+            layoutWeatherSummary.setVisibility(View.GONE);
+            return;
+        }
+
+        layoutWeatherSummary.setVisibility(View.VISIBLE);
+        textWeatherSummary.setText("Météo prévue prise en compte :\n" + weatherSummary.getSummaryText());
+    }
+
     private void showErrorState(String message) {
+        if (layoutWeatherSummary != null) {
+            layoutWeatherSummary.setVisibility(View.GONE);
+        }
         routeOptionAdapter.submitList(new ArrayList<>());
         recyclerRouteOptions.setVisibility(View.GONE);
         textRouteStatus.setVisibility(View.VISIBLE);
@@ -238,6 +265,10 @@ public class RouteOptionsFragment extends Fragment {
         progressRouteGeneration.setVisibility(loading ? View.VISIBLE : View.GONE);
         recyclerRouteOptions.setVisibility(loading ? View.GONE : View.VISIBLE);
         textRouteStatus.setVisibility(View.VISIBLE);
+
+        if (layoutWeatherSummary != null && loading) {
+            layoutWeatherSummary.setVisibility(View.GONE);
+        }
 
         if (buttonRegenerateRoutes != null) {
             buttonRegenerateRoutes.setEnabled(!loading);
