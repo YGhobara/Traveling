@@ -23,6 +23,12 @@ import android.content.Intent;
 import android.widget.Toast;
 
 import com.google.android.material.button.MaterialButton;
+import android.graphics.Typeface;
+
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RouteDetailFragment extends Fragment {
 
@@ -210,42 +216,72 @@ public class RouteDetailFragment extends Fragment {
             return;
         }
 
-        LayoutInflater inflater = LayoutInflater.from(requireContext());
+        Map<Integer, List<RouteStep>> stepsByDay = new TreeMap<>();
 
-        for (int i = 0; i < routeOption.getSteps().size(); i++) {
-            RouteStep step = routeOption.getSteps().get(i);
+        for (RouteStep step : routeOption.getSteps()) {
+            int day = step.getDayNumber();
 
-            View stepView = inflater.inflate(R.layout.item_route_step, containerSteps, false);
-
-            TextView textStepNumber = stepView.findViewById(R.id.textStepNumber);
-            TextView textStepName = stepView.findViewById(R.id.textStepName);
-            TextView textStepMeta = stepView.findViewById(R.id.textStepMeta);
-            TextView textStepDescription = stepView.findViewById(R.id.textStepDescription);
-            TextView textStepDuration = stepView.findViewById(R.id.textStepDuration);
-            TextView textStepCost = stepView.findViewById(R.id.textStepCost);
-            TextView textStepTravelNext = stepView.findViewById(R.id.textStepTravelNext);
-
-            textStepNumber.setText(String.valueOf(i + 1));
-            textStepName.setText(safeText(step.getName(), "Étape"));
-            textStepMeta.setText(safeText(step.getPeriod(), "Moment") + " • " + safeText(step.getCategory(), "Activité"));
-            textStepDescription.setText(safeText(step.getDescription(), "Aucune description disponible."));
-
-            textStepDuration.setText("Durée : " + step.getEstimatedDurationMinutes() + " min");
-            textStepCost.setText(String.format(Locale.FRANCE, "Coût : %.0f €", step.getEstimatedCost()));
-
-            if (step.getTravelToNextMinutes() > 0) {
-                textStepTravelNext.setVisibility(View.VISIBLE);
-                textStepTravelNext.setText(
-                        "Trajet suivant : "
-                                + step.getTravelToNextMinutes()
-                                + " min • "
-                                + safeText(step.getTravelToNextMode(), "déplacement")
-                );
-            } else {
-                textStepTravelNext.setVisibility(View.GONE);
+            if (day <= 0) {
+                day = 1;
             }
 
-            containerSteps.addView(stepView);
+            if (!stepsByDay.containsKey(day)) {
+                stepsByDay.put(day, new ArrayList<>());
+            }
+
+            stepsByDay.get(day).add(step);
+        }
+
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
+
+        for (Map.Entry<Integer, List<RouteStep>> entry : stepsByDay.entrySet()) {
+            int dayNumber = entry.getKey();
+            List<RouteStep> daySteps = entry.getValue();
+
+            TextView dayTitle = new TextView(requireContext());
+            dayTitle.setText("Jour " + dayNumber);
+            dayTitle.setTextColor(0xFF0F172A);
+            dayTitle.setTextSize(18);
+            dayTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            dayTitle.setPadding(0, 18, 0, 10);
+
+            containerSteps.addView(dayTitle);
+
+            for (int i = 0; i < daySteps.size(); i++) {
+                RouteStep step = daySteps.get(i);
+
+                View stepView = inflater.inflate(R.layout.item_route_step, containerSteps, false);
+
+                TextView textStepNumber = stepView.findViewById(R.id.textStepNumber);
+                TextView textStepName = stepView.findViewById(R.id.textStepName);
+                TextView textStepMeta = stepView.findViewById(R.id.textStepMeta);
+                TextView textStepDescription = stepView.findViewById(R.id.textStepDescription);
+                TextView textStepDuration = stepView.findViewById(R.id.textStepDuration);
+                TextView textStepCost = stepView.findViewById(R.id.textStepCost);
+                TextView textStepTravelNext = stepView.findViewById(R.id.textStepTravelNext);
+
+                textStepNumber.setText(String.valueOf(i + 1));
+                textStepName.setText(safeText(step.getName(), "Étape"));
+                textStepMeta.setText(safeText(step.getPeriod(), "Moment") + " • " + safeText(step.getCategory(), "Activité"));
+                textStepDescription.setText(safeText(step.getDescription(), "Aucune description disponible."));
+
+                textStepDuration.setText("Durée : " + step.getEstimatedDurationMinutes() + " min");
+                textStepCost.setText(String.format(Locale.FRANCE, "Coût : %.0f €", step.getEstimatedCost()));
+
+                if (step.getTravelToNextMinutes() > 0) {
+                    textStepTravelNext.setVisibility(View.VISIBLE);
+                    textStepTravelNext.setText(
+                            "Trajet suivant : "
+                                    + step.getTravelToNextMinutes()
+                                    + " min • "
+                                    + safeText(step.getTravelToNextMode(), "déplacement")
+                    );
+                } else {
+                    textStepTravelNext.setVisibility(View.GONE);
+                }
+
+                containerSteps.addView(stepView);
+            }
         }
     }
 

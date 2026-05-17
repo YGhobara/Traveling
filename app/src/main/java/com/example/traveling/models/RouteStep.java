@@ -8,6 +8,7 @@ public class RouteStep implements Serializable {
     private String category;
     private String description;
     private String period; // Morning, Afternoon, Evening
+    private int dayNumber;
     private int estimatedDurationMinutes;
     private double estimatedCost;
     private double latitude;
@@ -48,6 +49,14 @@ public class RouteStep implements Serializable {
 
     public void setPeriod(String period) {
         this.period = period;
+    }
+
+    public int getDayNumber() {
+        return dayNumber;
+    }
+
+    public void setDayNumber(int dayNumber) {
+        this.dayNumber = dayNumber;
     }
 
     public int getEstimatedDurationMinutes() {

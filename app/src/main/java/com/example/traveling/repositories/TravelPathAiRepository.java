@@ -29,7 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-
+import java.util.HashMap;
 public class TravelPathAiRepository {
 
     public interface GenerateRoutesCallback {
@@ -101,20 +101,20 @@ public class TravelPathAiRepository {
     }
 
     private Schema buildRouteSchema() {
-        Schema stepSchema = Schema.obj(
-                Map.of(
-                        "name", Schema.str(),
-                        "category", Schema.str(),
-                        "description", Schema.str(),
-                        "period", Schema.str(),
-                        "estimatedDurationMinutes", Schema.numInt(),
-                        "estimatedCost", Schema.numDouble(),
-                        "latitude", Schema.numDouble(),
-                        "longitude", Schema.numDouble(),
-                        "travelToNextMinutes", Schema.numInt(),
-                        "travelToNextMode", Schema.str()
-                )
-        );
+        HashMap<String, Schema> stepFields = new HashMap<>();
+        stepFields.put("dayNumber", Schema.numInt());
+        stepFields.put("name", Schema.str());
+        stepFields.put("category", Schema.str());
+        stepFields.put("description", Schema.str());
+        stepFields.put("period", Schema.str());
+        stepFields.put("estimatedDurationMinutes", Schema.numInt());
+        stepFields.put("estimatedCost", Schema.numDouble());
+        stepFields.put("latitude", Schema.numDouble());
+        stepFields.put("longitude", Schema.numDouble());
+        stepFields.put("travelToNextMinutes", Schema.numInt());
+        stepFields.put("travelToNextMode", Schema.str());
+
+        Schema stepSchema = Schema.obj(stepFields);
 
         Schema routeSchema = Schema.obj(
                 Map.of(
@@ -161,6 +161,10 @@ public class TravelPathAiRepository {
                 "- Les parcours doivent être réalistes pour un visiteur.\n" +
                 "- Inclure les lieux obligatoires si possible.\n" +
                 "- Les étapes doivent être ordonnées logiquement.\n" +
+                "- Si la durée est supérieure à 1 jour, répartis clairement les étapes sur plusieurs jours.\n" +
+                "- Chaque étape doit avoir un dayNumber entre 1 et " + preferences.getDurationDays() + ".\n" +
+                "- Pour chaque jour, propose idéalement des étapes Matin, Après-midi et éventuellement Soir.\n" +
+                "- Ne concentre pas toutes les étapes sur le jour 1 si la durée est de plusieurs jours.\n" +
                 "- Utilise les périodes : Matin, Après-midi, Soir.\n" +
                 "- Donne des estimations raisonnables de budget et durée.\n" +
                 "- Si tu connais des coordonnées approximatives, ajoute latitude/longitude.\n" +
@@ -193,6 +197,7 @@ public class TravelPathAiRepository {
                     JSONObject stepObject = stepsArray.getJSONObject(j);
 
                     RouteStep step = new RouteStep();
+                    step.setDayNumber(stepObject.optInt("dayNumber", 1));
                     step.setName(stepObject.optString("name"));
                     step.setCategory(stepObject.optString("category"));
                     step.setDescription(stepObject.optString("description"));
