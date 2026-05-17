@@ -174,15 +174,6 @@
                         android:textStyle="bold" />
 
                     <TextView
-                        android:id="@+id/tabRoutes"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="center"
-                        android:text="Trajets (0)"
-                        android:textColor="#6B7280" />
-
-                    <TextView
                         android:id="@+id/tabGroups"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"

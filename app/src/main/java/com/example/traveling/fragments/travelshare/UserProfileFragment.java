@@ -60,7 +60,6 @@ public class UserProfileFragment extends Fragment {
     private View statFollowing;
 
     private TextView tabPhotos;
-    private TextView tabRoutes;
     private TextView tabGroups;
 
     private MaterialButton buttonFollowUser;
@@ -140,7 +139,6 @@ public class UserProfileFragment extends Fragment {
         statFollowing = view.findViewById(R.id.statFollowing);
 
         tabPhotos = view.findViewById(R.id.tabPhotos);
-        tabRoutes = view.findViewById(R.id.tabRoutes);
         tabGroups = view.findViewById(R.id.tabGroups);
 
         buttonFollowUser = view.findViewById(R.id.buttonFollowUser);
@@ -166,7 +164,6 @@ public class UserProfileFragment extends Fragment {
         setStat(statFollowing, "0", "Abonnements");
 
         setTab(tabPhotos, "Photos", 0, R.drawable.ic_bookmark_outline, true);
-        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
         setTab(tabGroups, "Groupes", 0, R.drawable.ic_person_outline, false);
     }
 
@@ -201,19 +198,11 @@ public class UserProfileFragment extends Fragment {
         buttonFollowUser.setOnClickListener(v -> toggleFollow());
 
         tabPhotos.setOnClickListener(v -> showPhotosSection());
-
-        tabRoutes.setOnClickListener(v ->
-                Toast.makeText(requireContext(),
-                        "Trajets publics à venir.",
-                        Toast.LENGTH_SHORT).show()
-        );
-
         tabGroups.setOnClickListener(v -> showGroupsSection());
     }
 
     private void showGroupsSection() {
         setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, false);
-        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
         setTab(tabGroups, "Groupes", currentGroupsCount, R.drawable.ic_person_outline, true);
 
         textProfileSectionPlaceholder.setVisibility(View.GONE);
@@ -395,7 +384,6 @@ public class UserProfileFragment extends Fragment {
                 setStat(statTrips, String.valueOf(voyagesCount), "Voyages");
 
                 setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, true);
-                setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
                 setTab(tabGroups, "Groupes", 0, R.drawable.ic_person_outline, false);
 
                 showPhotosSection();
@@ -444,7 +432,6 @@ public class UserProfileFragment extends Fragment {
     private void showPhotosSection() {
         layoutProfileGroupsSection.setVisibility(View.GONE);
         setTab(tabPhotos, "Photos", currentPhotosCount, R.drawable.ic_bookmark_outline, true);
-        setTab(tabRoutes, "Trajets", 0, R.drawable.ic_directions_outline, false);
         setTab(tabGroups, "Groupes", 0, R.drawable.ic_person_outline, false);
 
         if (currentPhotosCount == 0) {
