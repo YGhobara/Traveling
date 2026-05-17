@@ -290,6 +290,74 @@
                             android:text="Caption"
                             android:textColor="@color/travel_on_surface"
                             android:textSize="16sp" />
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/cardDetailVoiceNote"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:visibility="gone"
+                            app:cardBackgroundColor="#F9FAFB"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="1dp"
+                            app:strokeColor="#E5E7EB"
+                            app:strokeWidth="1dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:padding="14dp">
+
+                                <ImageButton
+                                    android:id="@+id/buttonDetailPlayVoice"
+                                    android:layout_width="44dp"
+                                    android:layout_height="44dp"
+                                    android:background="@android:color/transparent"
+                                    android:contentDescription="Lire la note vocale"
+                                    android:padding="10dp"
+                                    android:src="@drawable/ic_play_arrow"
+                                    app:tint="@color/travel_primary" />
+
+                                <LinearLayout
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="10dp"
+                                    android:layout_weight="1"
+                                    android:orientation="vertical">
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:text="Note vocale"
+                                        android:textColor="@color/travel_on_surface"
+                                        android:textSize="15sp"
+                                        android:textStyle="bold" />
+
+                                    <com.google.android.material.textview.MaterialTextView
+                                        android:id="@+id/textDetailVoiceStatus"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="2dp"
+                                        android:text="Appuyez pour écouter"
+                                        android:textColor="#6B7280"
+                                        android:textSize="13sp" />
+
+                                    <ProgressBar
+                                        android:id="@+id/progressDetailVoice"
+                                        style="?android:attr/progressBarStyleHorizontal"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="6dp"
+                                        android:layout_marginTop="8dp"
+                                        android:max="100"
+                                        android:progress="0" />
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
+                        </com.google.android.material.card.MaterialCardView>
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

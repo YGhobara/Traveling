@@ -44,6 +44,10 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 import java.util.List;
+import android.media.MediaPlayer;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.ProgressBar;
 
 public class PhotoDetailFragment extends Fragment {
 
@@ -67,6 +71,15 @@ public class PhotoDetailFragment extends Fragment {
     private MaterialButton buttonDirectionsWalk;
     private MaterialButton buttonDirectionsTransit;
     private ImageButton buttonPostOptions;
+    private com.google.android.material.card.MaterialCardView cardDetailVoiceNote;
+    private ImageButton buttonDetailPlayVoice;
+    private TextView textDetailVoiceStatus;
+
+    private MediaPlayer voicePlayer;
+    private boolean isPlayingVoice = false;
+    private ProgressBar progressDetailVoice;
+    private final Handler voiceProgressHandler = new Handler(Looper.getMainLooper());
+    private Runnable voiceProgressRunnable;
 
     private RecyclerView recyclerViewComments;
     private TextView textNoComments;
@@ -120,6 +133,10 @@ public class PhotoDetailFragment extends Fragment {
         textPostDate = view.findViewById(R.id.textDetailPostDate);
         textPlaceType = view.findViewById(R.id.textDetailPlaceType);
         textCaption = view.findViewById(R.id.textDetailCaption);
+        cardDetailVoiceNote = view.findViewById(R.id.cardDetailVoiceNote);
+        buttonDetailPlayVoice = view.findViewById(R.id.buttonDetailPlayVoice);
+        textDetailVoiceStatus = view.findViewById(R.id.textDetailVoiceStatus);
+        progressDetailVoice = view.findViewById(R.id.progressDetailVoice);
         textLikes = view.findViewById(R.id.textDetailLikeCount);
         textCommentsTitle = view.findViewById(R.id.textCommentsTitle);
         buttonLike = view.findViewById(R.id.buttonDetailLike);
@@ -165,6 +182,7 @@ public class PhotoDetailFragment extends Fragment {
         buttonDirectionsTransit.setOnClickListener(v -> openDirectionsInMaps("transit"));
         textAuthor.setOnClickListener(v -> openAuthorProfile());
         textAuthor.setTextColor(Color.parseColor("#1565C0"));
+        buttonDetailPlayVoice.setOnClickListener(v -> toggleVoicePlayback());
 
         loadFreshPost();
         loadComments();
@@ -225,6 +243,7 @@ public class PhotoDetailFragment extends Fragment {
         textOverlayPostDate.setText(formatRelativeTime(post.getCreatedAt()));
         displayPlaceType(post.getPlaceType());
         textCaption.setText(post.getCaption());
+        displayVoiceNote(post);
         textLikes.setText(post.getLikeCount() + " J'aime");
         textCommentsTitle.setText("Commentaires (" + post.getCommentCount() + ")");
 
@@ -525,6 +544,142 @@ public class PhotoDetailFragment extends Fragment {
             textPlaceType.setVisibility(View.VISIBLE);
         } else {
             textPlaceType.setVisibility(View.GONE);
+        }
+    }
+
+    private void displayVoiceNote(Post post) {
+        if (post == null || TextUtils.isEmpty(post.getAudioUrl())) {
+            cardDetailVoiceNote.setVisibility(View.GONE);
+            stopVoicePlayback();
+            return;
+        }
+
+        cardDetailVoiceNote.setVisibility(View.VISIBLE);
+        textDetailVoiceStatus.setText("Appuyez pour écouter");
+        buttonDetailPlayVoice.setImageResource(R.drawable.ic_play_arrow);
+    }
+
+    private void toggleVoicePlayback() {
+        if (isPlayingVoice) {
+            stopVoicePlayback();
+            return;
+        }
+
+        playVoiceNote();
+    }
+
+    private void playVoiceNote() {
+        if (currentPost == null || TextUtils.isEmpty(currentPost.getAudioUrl())) {
+            Toast.makeText(requireContext(),
+                    "Note vocale indisponible.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            stopVoicePlayback();
+
+            voicePlayer = new MediaPlayer();
+            voicePlayer.setDataSource(currentPost.getAudioUrl());
+            voicePlayer.prepareAsync();
+
+            textDetailVoiceStatus.setText("Chargement...");
+
+            voicePlayer.setOnPreparedListener(mp -> {
+                if (!isAdded()) return;
+
+                mp.start();
+                isPlayingVoice = true;
+                buttonDetailPlayVoice.setImageResource(R.drawable.ic_stop);
+                textDetailVoiceStatus.setText("Lecture en cours...");
+                startVoiceProgressUpdates();
+            });
+
+            voicePlayer.setOnCompletionListener(mp -> stopVoicePlayback());
+
+            voicePlayer.setOnErrorListener((mp, what, extra) -> {
+                stopVoicePlayback();
+
+                if (isAdded()) {
+                    Toast.makeText(requireContext(),
+                            "Impossible de lire la note vocale.",
+                            Toast.LENGTH_SHORT).show();
+                }
+
+                return true;
+            });
+
+        } catch (Exception e) {
+            stopVoicePlayback();
+
+            Toast.makeText(requireContext(),
+                    "Impossible de lire la note vocale.",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void startVoiceProgressUpdates() {
+        stopVoiceProgressUpdates();
+
+        if (voicePlayer == null || progressDetailVoice == null) {
+            return;
+        }
+
+        progressDetailVoice.setMax(voicePlayer.getDuration());
+        progressDetailVoice.setProgress(0);
+
+        voiceProgressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (voicePlayer != null && isPlayingVoice) {
+                    try {
+                        progressDetailVoice.setProgress(voicePlayer.getCurrentPosition());
+                        voiceProgressHandler.postDelayed(this, 300);
+                    } catch (RuntimeException ignored) {
+                        stopVoiceProgressUpdates();
+                    }
+                }
+            }
+        };
+
+        voiceProgressHandler.post(voiceProgressRunnable);
+    }
+
+    private void stopVoiceProgressUpdates() {
+        if (voiceProgressRunnable != null) {
+            voiceProgressHandler.removeCallbacks(voiceProgressRunnable);
+            voiceProgressRunnable = null;
+        }
+    }
+
+    private void stopVoicePlayback() {
+        if (voicePlayer != null) {
+            try {
+                if (voicePlayer.isPlaying()) {
+                    voicePlayer.stop();
+                }
+
+                voicePlayer.release();
+            } catch (RuntimeException ignored) {
+            }
+
+            voicePlayer = null;
+        }
+
+        isPlayingVoice = false;
+
+        stopVoiceProgressUpdates();
+
+        if (progressDetailVoice != null) {
+            progressDetailVoice.setProgress(0);
+        }
+
+        if (buttonDetailPlayVoice != null) {
+            buttonDetailPlayVoice.setImageResource(R.drawable.ic_play_arrow);
+        }
+
+        if (textDetailVoiceStatus != null) {
+            textDetailVoiceStatus.setText("Appuyez pour écouter");
         }
     }
 
@@ -925,5 +1080,11 @@ public class PhotoDetailFragment extends Fragment {
             return "Publié il y a " + years + " an" + (years > 1 ? "s" : "")
                     + " et " + remainingMonths + " mois";
         }
+    }
+
+    @Override
+    public void onDestroyView() {
+        stopVoicePlayback();
+        super.onDestroyView();
     }
 }
