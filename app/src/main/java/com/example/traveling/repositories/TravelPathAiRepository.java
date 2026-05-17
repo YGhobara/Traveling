@@ -151,6 +151,9 @@ public class TravelPathAiRepository {
 
     private String buildPrompt(RoutePreferences preferences, WeatherForecastSummary weatherSummary) {
         return "Tu es un assistant expert en planification de voyages.\n\n" +
+                "Tu dois répondre exclusivement en français.\n" +
+                "Tous les champs textuels du JSON doivent être en français : title, summary, effortLevel, weatherAdvice, category, description, period, travelToNextMode.\n" +
+                "Seul le champ type doit garder les valeurs techniques exactes : ECONOMIC, BALANCED ou COMFORT.\n\n" +
                 "Génère exactement 3 options de parcours pour visiter la destination demandée :\n" +
                 "1. ECONOMIC : économique\n" +
                 "2. BALANCED : équilibré\n" +
@@ -174,6 +177,7 @@ public class TravelPathAiRepository {
                 "\n\n" +
 
                 "Règles importantes :\n" +
+                "- Toute la réponse doit être en français, sauf le champ type qui doit rester ECONOMIC, BALANCED ou COMFORT.\n" +
                 "- Réponds uniquement avec le JSON demandé par le schéma.\n" +
                 "- Les parcours doivent être réalistes pour un visiteur.\n" +
                 "- Inclure les lieux obligatoires si possible.\n" +

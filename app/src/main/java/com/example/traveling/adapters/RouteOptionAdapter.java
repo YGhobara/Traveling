@@ -15,6 +15,10 @@ import com.google.android.material.button.MaterialButton;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import android.text.TextUtils;
+import android.widget.ImageView;
+
+import com.bumptech.glide.Glide;
 
 public class RouteOptionAdapter extends RecyclerView.Adapter<RouteOptionAdapter.RouteOptionViewHolder> {
 
@@ -51,6 +55,18 @@ public class RouteOptionAdapter extends RecyclerView.Adapter<RouteOptionAdapter.
     @Override
     public void onBindViewHolder(@NonNull RouteOptionViewHolder holder, int position) {
         RouteOption route = routes.get(position);
+        if (!TextUtils.isEmpty(route.getImageUrl())) {
+            holder.imageRouteOption.setVisibility(View.VISIBLE);
+
+            Glide.with(holder.itemView.getContext())
+                    .load(route.getImageUrl())
+                    .centerCrop()
+                    .placeholder(R.drawable.bg_post_placeholder)
+                    .error(R.drawable.bg_post_placeholder)
+                    .into(holder.imageRouteOption);
+        } else {
+            holder.imageRouteOption.setVisibility(View.GONE);
+        }
 
         holder.textRouteTitle.setText(route.getTitle());
         holder.textRouteType.setText(formatRouteType(route.getType()));
@@ -115,7 +131,7 @@ public class RouteOptionAdapter extends RecyclerView.Adapter<RouteOptionAdapter.
     }
 
     static class RouteOptionViewHolder extends RecyclerView.ViewHolder {
-
+        ImageView imageRouteOption;
         TextView textRouteTitle;
         TextView textRouteType;
         TextView textRouteSummary;
@@ -126,7 +142,7 @@ public class RouteOptionAdapter extends RecyclerView.Adapter<RouteOptionAdapter.
 
         public RouteOptionViewHolder(@NonNull View itemView) {
             super(itemView);
-
+            imageRouteOption = itemView.findViewById(R.id.imageRouteOption);
             textRouteTitle = itemView.findViewById(R.id.textRouteTitle);
             textRouteType = itemView.findViewById(R.id.textRouteType);
             textRouteSummary = itemView.findViewById(R.id.textRouteSummary);

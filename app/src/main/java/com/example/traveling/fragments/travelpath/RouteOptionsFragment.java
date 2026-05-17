@@ -28,12 +28,14 @@ import java.util.ArrayList;
 import com.google.android.material.button.MaterialButton;
 import com.example.traveling.models.WeatherForecastSummary;
 import com.example.traveling.repositories.OpenMeteoRepository;
+import com.example.traveling.repositories.UnsplashRepository;
 
 public class RouteOptionsFragment extends Fragment {
     private ArrayList<RouteOption> generatedRoutes = new ArrayList<>();
     private RoutePreferences routePreferences;
     private TravelPathAiRepository travelPathAiRepository;
     private OpenMeteoRepository openMeteoRepository;
+    private UnsplashRepository unsplashRepository;
     private TextView textRouteOptionsTitle;
     private TextView textWeatherSummary;
     private View layoutWeatherSummary;
@@ -90,6 +92,7 @@ public class RouteOptionsFragment extends Fragment {
         setupRegenerateButton();
         travelPathAiRepository = new TravelPathAiRepository();
         openMeteoRepository = new OpenMeteoRepository();
+        unsplashRepository = new UnsplashRepository();
 
         if (!generatedRoutes.isEmpty()) {
             displayWeatherSummary(currentWeatherSummary);
@@ -190,10 +193,7 @@ public class RouteOptionsFragment extends Fragment {
                             route.setDestination(routePreferences.getDestination());
                         }
 
-                        generatedRoutes.clear();
-                        generatedRoutes.addAll(routes);
-
-                        showGeneratedRoutes(generatedRoutes);
+                        fetchImagesForRoutes(routes);
                     }
 
                     @Override
@@ -209,6 +209,106 @@ public class RouteOptionsFragment extends Fragment {
                     }
                 }
         );
+    }
+
+    private void fetchImagesForRoutes(List<RouteOption> routes) {
+        if (routes == null || routes.isEmpty()) {
+            showErrorState("Aucun parcours n'a pu être généré. Veuillez réessayer.");
+            return;
+        }
+
+        final int[] completed = {0};
+
+        for (int i = 0; i < routes.size(); i++) {
+            RouteOption route = routes.get(i);
+            int imagePage = i + 1;
+            String query = buildUnsplashQuery(route);
+
+            unsplashRepository.searchImage(query, imagePage, new UnsplashRepository.UnsplashImageCallback() {
+                @Override
+                public void onSuccess(String imageUrl) {
+                    if (!isAdded()) {
+                        return;
+                    }
+
+                    route.setImageUrl(imageUrl);
+                    completed[0]++;
+
+                    if (completed[0] >= routes.size()) {
+                        generatedRoutes.clear();
+                        generatedRoutes.addAll(routes);
+                        showGeneratedRoutes(generatedRoutes);
+                    }
+                }
+
+                @Override
+                public void onError(Exception exception) {
+                    if (!isAdded()) {
+                        return;
+                    }
+
+                    String fallbackQuery = route.getDestination() + " travel";
+
+                    unsplashRepository.searchImage(fallbackQuery, imagePage, new UnsplashRepository.UnsplashImageCallback() {
+                        @Override
+                        public void onSuccess(String imageUrl) {
+                            if (!isAdded()) {
+                                return;
+                            }
+
+                            route.setImageUrl(imageUrl);
+                            completed[0]++;
+
+                            if (completed[0] >= routes.size()) {
+                                generatedRoutes.clear();
+                                generatedRoutes.addAll(routes);
+                                showGeneratedRoutes(generatedRoutes);
+                            }
+                        }
+
+                        @Override
+                        public void onError(Exception fallbackException) {
+                            if (!isAdded()) {
+                                return;
+                            }
+
+                            completed[0]++;
+
+                            if (completed[0] >= routes.size()) {
+                                generatedRoutes.clear();
+                                generatedRoutes.addAll(routes);
+                                showGeneratedRoutes(generatedRoutes);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    private String buildUnsplashQuery(RouteOption route) {
+        String destination = route.getDestination() != null
+                ? route.getDestination()
+                : routePreferences.getDestination();
+
+        String summary = route.getSummary() == null ? "" : route.getSummary();
+
+        if (summary.toLowerCase().contains("nature")) {
+            return destination + " nature travel";
+        }
+
+        if (summary.toLowerCase().contains("musée")
+                || summary.toLowerCase().contains("culture")
+                || summary.toLowerCase().contains("monument")) {
+            return destination + " architecture museum travel";
+        }
+
+        if (summary.toLowerCase().contains("gastronomie")
+                || summary.toLowerCase().contains("restaurant")) {
+            return destination + " food city travel";
+        }
+
+        return destination + " travel city";
     }
 
     private void displayWeatherSummary(WeatherForecastSummary weatherSummary) {

@@ -14,6 +14,16 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <ImageView
+            android:id="@+id/imageRouteOption"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_post_placeholder"
+            android:contentDescription="Image du parcours"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/textRouteTitle"
             android:layout_width="match_parent"

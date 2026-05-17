@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RouteOption implements Serializable {
-
+    private String imageUrl;
     private String title;
     private String type; // ECONOMIC, BALANCED, COMFORT
     private String summary;
@@ -19,6 +19,14 @@ public class RouteOption implements Serializable {
     private boolean saved;
 
     public RouteOption() {
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public String getTitle() {
