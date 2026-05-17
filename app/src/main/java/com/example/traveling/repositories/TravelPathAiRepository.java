@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.HashMap;
+import com.example.traveling.models.WeatherForecastSummary;
 public class TravelPathAiRepository {
 
     public interface GenerateRoutesCallback {
@@ -62,8 +63,9 @@ public class TravelPathAiRepository {
     }
 
     public void generateRoutes(@NonNull RoutePreferences preferences,
+                               WeatherForecastSummary weatherSummary,
                                @NonNull GenerateRoutesCallback callback) {
-        String prompt = buildPrompt(preferences);
+        String prompt = buildPrompt(preferences, weatherSummary);
 
         Content content = new Content.Builder()
                 .addText(prompt)
@@ -136,7 +138,18 @@ public class TravelPathAiRepository {
         );
     }
 
-    private String buildPrompt(RoutePreferences preferences) {
+    private String buildWeatherPromptSection(WeatherForecastSummary weatherSummary) {
+        if (weatherSummary == null || !weatherSummary.isAvailable()
+                || weatherSummary.getSummaryText() == null
+                || weatherSummary.getSummaryText().trim().isEmpty()) {
+            return "Prévisions météo exactes indisponibles. Utilise seulement les sensibilités météo et la saison indiquées par l'utilisateur.";
+        }
+
+        return weatherSummary.getSummaryText()
+                + "\nAdapte le parcours à cette météo : privilégie les activités intérieures en cas de pluie, évite les longues marches en cas de forte chaleur, et respecte les sensibilités météo indiquées par l'utilisateur.";
+    }
+
+    private String buildPrompt(RoutePreferences preferences, WeatherForecastSummary weatherSummary) {
         return "Tu es un assistant expert en planification de voyages.\n\n" +
                 "Génère exactement 3 options de parcours pour visiter la destination demandée :\n" +
                 "1. ECONOMIC : économique\n" +
@@ -144,6 +157,7 @@ public class TravelPathAiRepository {
                 "3. COMFORT : confortable\n\n" +
 
                 "Contraintes utilisateur :\n" +
+                "- Date de début : " + preferences.getStartDate() + "\n" +
                 "- Destination : " + preferences.getDestination() + "\n" +
                 "- Activités souhaitées : " + preferences.getActivities() + "\n" +
                 "- Budget : " + preferences.getBudgetLevel() + "\n" +
@@ -155,6 +169,9 @@ public class TravelPathAiRepository {
                 "- Éviter chaleur : " + preferences.isAvoidHeat() + "\n" +
                 "- Éviter froid : " + preferences.isAvoidCold() + "\n" +
                 "- Éviter humidité : " + preferences.isAvoidHumidity() + "\n\n" +
+                "Météo prévue :\n" +
+                buildWeatherPromptSection(weatherSummary) +
+                "\n\n" +
 
                 "Règles importantes :\n" +
                 "- Réponds uniquement avec le JSON demandé par le schéma.\n" +

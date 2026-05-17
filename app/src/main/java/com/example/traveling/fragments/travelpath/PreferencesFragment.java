@@ -33,6 +33,11 @@ import android.text.TextWatcher;
 
 import com.example.traveling.models.LocationSuggestion;
 import com.example.traveling.repositories.PhotonRepository;
+import android.app.DatePickerDialog;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
 
 public class PreferencesFragment extends Fragment {
     private PhotonRepository photonRepository;
@@ -40,7 +45,8 @@ public class PreferencesFragment extends Fragment {
     private Runnable pendingDestinationSearch;
     private LocationSuggestion selectedDestinationSuggestion;
     private boolean isSelectingDestination = false;
-
+    private TextInputEditText inputStartDate;
+    private String selectedStartDate;
     private AutoCompleteTextView dropdownDestination;
     private TextInputEditText inputMustSeePlaces;
 
@@ -79,10 +85,12 @@ public class PreferencesFragment extends Fragment {
         bindViews(view);
         setupDropdowns();
         setupDestinationAutocomplete();
+        setupStartDatePicker();
         setupGenerateButton();
     }
 
     private void bindViews(View view) {
+        inputStartDate = view.findViewById(R.id.inputStartDate);
         dropdownDestination = view.findViewById(R.id.dropdownDestination);
         inputMustSeePlaces = view.findViewById(R.id.inputMustSeePlaces);
         chipGroupActivities = view.findViewById(R.id.chipGroupActivities);
@@ -222,6 +230,36 @@ public class PreferencesFragment extends Fragment {
         });
     }
 
+    private void setupStartDatePicker() {
+        Calendar calendar = Calendar.getInstance();
+
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE);
+        selectedStartDate = formatter.format(calendar.getTime());
+        inputStartDate.setText(selectedStartDate);
+
+        inputStartDate.setOnClickListener(v -> {
+            Calendar selectedCalendar = Calendar.getInstance();
+
+            DatePickerDialog dialog = new DatePickerDialog(
+                    requireContext(),
+                    (view, year, month, dayOfMonth) -> {
+                        selectedCalendar.set(Calendar.YEAR, year);
+                        selectedCalendar.set(Calendar.MONTH, month);
+                        selectedCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+                        selectedStartDate = formatter.format(selectedCalendar.getTime());
+                        inputStartDate.setText(selectedStartDate);
+                    },
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH),
+                    calendar.get(Calendar.DAY_OF_MONTH)
+            );
+
+            dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+            dialog.show();
+        });
+    }
+
     private void searchDestination(String query) {
         photonRepository.searchLocations(query, new PhotonRepository.OnLocationSuggestionsLoadedListener() {
             @Override
@@ -292,6 +330,14 @@ public class PreferencesFragment extends Fragment {
 
         RoutePreferences preferences = new RoutePreferences();
         preferences.setDestination(destination);
+        preferences.setStartDate(selectedStartDate);
+        if (selectedDestinationSuggestion != null) {
+            preferences.setDestinationLatitude(selectedDestinationSuggestion.getLatitude());
+            preferences.setDestinationLongitude(selectedDestinationSuggestion.getLongitude());
+            preferences.setHasDestinationCoordinates(true);
+        } else {
+            preferences.setHasDestinationCoordinates(false);
+        }
         preferences.setActivities(activities);
         preferences.setBudgetLevel(dropdownBudget.getText().toString().trim());
         preferences.setDurationDays(parseDurationDays(dropdownDuration.getText().toString()));

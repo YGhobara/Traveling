@@ -26,11 +26,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ArrayList;
 import com.google.android.material.button.MaterialButton;
+import com.example.traveling.models.WeatherForecastSummary;
+import com.example.traveling.repositories.OpenMeteoRepository;
 
 public class RouteOptionsFragment extends Fragment {
     private ArrayList<RouteOption> generatedRoutes = new ArrayList<>();
     private RoutePreferences routePreferences;
     private TravelPathAiRepository travelPathAiRepository;
+    private OpenMeteoRepository openMeteoRepository;
     private TextView textRouteOptionsTitle;
     private TextView textRouteStatus;
     private MaterialButton buttonRegenerateRoutes;
@@ -83,6 +86,7 @@ public class RouteOptionsFragment extends Fragment {
         setupRecycler();
         setupRegenerateButton();
         travelPathAiRepository = new TravelPathAiRepository();
+        openMeteoRepository = new OpenMeteoRepository();
 
         if (!generatedRoutes.isEmpty()) {
             showGeneratedRoutes(generatedRoutes);
@@ -118,44 +122,85 @@ public class RouteOptionsFragment extends Fragment {
     private void generateRoutesWithAi() {
         setLoading(true);
 
-        travelPathAiRepository.generateRoutes(routePreferences, new TravelPathAiRepository.GenerateRoutesCallback() {
-            @Override
-            public void onSuccess(List<RouteOption> routes) {
-                Log.d(TAG, "AI success. Routes count: " + (routes == null ? 0 : routes.size()));
+        if (routePreferences.hasDestinationCoordinates()
+                && routePreferences.getStartDate() != null
+                && !routePreferences.getStartDate().trim().isEmpty()) {
 
-                if (!isAdded()) {
-                    return;
+            openMeteoRepository.getDailyForecast(
+                    routePreferences.getDestinationLatitude(),
+                    routePreferences.getDestinationLongitude(),
+                    routePreferences.getStartDate(),
+                    routePreferences.getDurationDays(),
+                    new OpenMeteoRepository.WeatherCallback() {
+                        @Override
+                        public void onSuccess(WeatherForecastSummary summary) {
+                            if (!isAdded()) {
+                                return;
+                            }
+
+                            callAiWithWeather(summary);
+                        }
+
+                        @Override
+                        public void onError(Exception exception) {
+                            if (!isAdded()) {
+                                return;
+                            }
+
+                            // Weather is useful, but should not block itinerary generation.
+                            callAiWithWeather(null);
+                        }
+                    }
+            );
+
+        } else {
+            callAiWithWeather(null);
+        }
+    }
+
+    private void callAiWithWeather(WeatherForecastSummary weatherSummary) {
+        travelPathAiRepository.generateRoutes(
+                routePreferences,
+                weatherSummary,
+                new TravelPathAiRepository.GenerateRoutesCallback() {
+                    @Override
+                    public void onSuccess(List<RouteOption> routes) {
+                        Log.d(TAG, "AI success. Routes count: " + (routes == null ? 0 : routes.size()));
+
+                        if (!isAdded()) {
+                            return;
+                        }
+
+                        setLoading(false);
+
+                        if (routes == null || routes.isEmpty()) {
+                            showErrorState("Aucun parcours n'a pu être généré. Veuillez réessayer.");
+                            return;
+                        }
+
+                        for (RouteOption route : routes) {
+                            route.setDestination(routePreferences.getDestination());
+                        }
+
+                        generatedRoutes.clear();
+                        generatedRoutes.addAll(routes);
+
+                        showGeneratedRoutes(generatedRoutes);
+                    }
+
+                    @Override
+                    public void onError(Exception exception) {
+                        Log.e(TAG, "AI generation failed", exception);
+
+                        if (!isAdded()) {
+                            return;
+                        }
+
+                        setLoading(false);
+                        showErrorState("Service de génération indisponible pour le moment. Veuillez réessayer plus tard.");
+                    }
                 }
-
-                setLoading(false);
-
-                if (routes == null || routes.isEmpty()) {
-                    showErrorState("Aucun parcours n'a pu être généré. Veuillez réessayer.");
-                    return;
-                }
-
-                for (RouteOption route : routes) {
-                    route.setDestination(routePreferences.getDestination());
-                }
-
-                generatedRoutes.clear();
-                generatedRoutes.addAll(routes);
-
-                showGeneratedRoutes(generatedRoutes);
-            }
-
-            @Override
-            public void onError(Exception exception) {
-                Log.e(TAG, "AI generation failed", exception);
-
-                if (!isAdded()) {
-                    return;
-                }
-
-                setLoading(false);
-                showErrorState("Service de génération indisponible pour le moment. Veuillez réessayer plus tard.");
-            }
-        });
+        );
     }
 
     private void showErrorState(String message) {

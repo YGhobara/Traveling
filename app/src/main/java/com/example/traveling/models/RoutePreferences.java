@@ -5,7 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RoutePreferences implements Serializable {
-
+    private String startDate; // yyyy-MM-dd
+    private double destinationLatitude;
+    private double destinationLongitude;
+    private boolean hasDestinationCoordinates;
     private String destination;
     private List<String> activities = new ArrayList<>();
     private String budgetLevel;
@@ -19,6 +22,38 @@ public class RoutePreferences implements Serializable {
     private List<String> mustSeePlaces = new ArrayList<>();
 
     public RoutePreferences() {
+    }
+
+    public String getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(String startDate) {
+        this.startDate = startDate;
+    }
+
+    public double getDestinationLatitude() {
+        return destinationLatitude;
+    }
+
+    public void setDestinationLatitude(double destinationLatitude) {
+        this.destinationLatitude = destinationLatitude;
+    }
+
+    public double getDestinationLongitude() {
+        return destinationLongitude;
+    }
+
+    public void setDestinationLongitude(double destinationLongitude) {
+        this.destinationLongitude = destinationLongitude;
+    }
+
+    public boolean hasDestinationCoordinates() {
+        return hasDestinationCoordinates;
+    }
+
+    public void setHasDestinationCoordinates(boolean hasDestinationCoordinates) {
+        this.hasDestinationCoordinates = hasDestinationCoordinates;
     }
 
     public String getDestination() {
