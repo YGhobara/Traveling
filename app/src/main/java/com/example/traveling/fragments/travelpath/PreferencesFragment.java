@@ -26,10 +26,22 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import android.widget.Filter;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
+
+import com.example.traveling.models.LocationSuggestion;
+import com.example.traveling.repositories.PhotonRepository;
 
 public class PreferencesFragment extends Fragment {
+    private PhotonRepository photonRepository;
+    private Handler searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingDestinationSearch;
+    private LocationSuggestion selectedDestinationSuggestion;
+    private boolean isSelectingDestination = false;
 
-    private TextInputEditText inputDestination;
+    private AutoCompleteTextView dropdownDestination;
     private TextInputEditText inputMustSeePlaces;
 
     private ChipGroup chipGroupActivities;
@@ -66,13 +78,13 @@ public class PreferencesFragment extends Fragment {
 
         bindViews(view);
         setupDropdowns();
+        setupDestinationAutocomplete();
         setupGenerateButton();
     }
 
     private void bindViews(View view) {
-        inputDestination = view.findViewById(R.id.inputDestination);
+        dropdownDestination = view.findViewById(R.id.dropdownDestination);
         inputMustSeePlaces = view.findViewById(R.id.inputMustSeePlaces);
-
         chipGroupActivities = view.findViewById(R.id.chipGroupActivities);
 
         dropdownBudget = view.findViewById(R.id.dropdownBudget);
@@ -162,6 +174,86 @@ public class PreferencesFragment extends Fragment {
         });
     }
 
+    private void setupDestinationAutocomplete() {
+        photonRepository = new PhotonRepository();
+
+        dropdownDestination.setThreshold(3);
+
+        dropdownDestination.setOnItemClickListener((parent, view, position, id) -> {
+            LocationSuggestion suggestion = (LocationSuggestion) parent.getItemAtPosition(position);
+
+            isSelectingDestination = true;
+            selectedDestinationSuggestion = suggestion;
+            dropdownDestination.setText(suggestion.getDisplayName(), false);
+            dropdownDestination.clearFocus();
+            isSelectingDestination = false;
+        });
+
+        dropdownDestination.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (isSelectingDestination) {
+                    return;
+                }
+
+                selectedDestinationSuggestion = null;
+
+                String query = s == null ? "" : s.toString().trim();
+
+                if (pendingDestinationSearch != null) {
+                    searchHandler.removeCallbacks(pendingDestinationSearch);
+                }
+
+                if (query.length() < 3) {
+                    return;
+                }
+
+                pendingDestinationSearch = () -> searchDestination(query);
+                searchHandler.postDelayed(pendingDestinationSearch, 450);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+    }
+
+    private void searchDestination(String query) {
+        photonRepository.searchLocations(query, new PhotonRepository.OnLocationSuggestionsLoadedListener() {
+            @Override
+            public void onSuccess(List<LocationSuggestion> suggestions) {
+                if (!isAdded()) {
+                    return;
+                }
+
+                ArrayAdapter<LocationSuggestion> adapter = new ArrayAdapter<>(
+                        requireContext(),
+                        android.R.layout.simple_dropdown_item_1line,
+                        suggestions
+                );
+
+                dropdownDestination.setAdapter(adapter);
+
+                if (!suggestions.isEmpty() && dropdownDestination.hasFocus()) {
+                    dropdownDestination.showDropDown();
+                }
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                if (!isAdded()) {
+                    return;
+                }
+
+                // Silent failure: user can still type a destination manually.
+            }
+        });
+    }
+
     private void setupGenerateButton() {
         buttonGenerateRoute.setOnClickListener(v -> {
             RoutePreferences preferences = buildPreferencesFromForm();
@@ -184,7 +276,7 @@ public class PreferencesFragment extends Fragment {
 
     @Nullable
     private RoutePreferences buildPreferencesFromForm() {
-        String destination = getText(inputDestination);
+        String destination = dropdownDestination.getText().toString().trim();
 
         if (TextUtils.isEmpty(destination)) {
             Toast.makeText(requireContext(), "Veuillez indiquer une destination.", Toast.LENGTH_SHORT).show();

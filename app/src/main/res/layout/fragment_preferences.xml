@@ -54,15 +54,18 @@
                         android:textStyle="bold" />
 
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layoutDestination"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:hint="Ville ou site à visiter">
 
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/inputDestination"
+                        <AutoCompleteTextView
+                            android:id="@+id/dropdownDestination"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:completionThreshold="2"
                             android:singleLine="true" />
                     </com.google.android.material.textfield.TextInputLayout>
 
