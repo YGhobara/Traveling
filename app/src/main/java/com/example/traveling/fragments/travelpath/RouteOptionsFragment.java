@@ -29,6 +29,8 @@ import com.google.android.material.button.MaterialButton;
 import com.example.traveling.models.WeatherForecastSummary;
 import com.example.traveling.repositories.OpenMeteoRepository;
 import com.example.traveling.repositories.UnsplashRepository;
+import android.view.Gravity;
+import android.widget.LinearLayout;
 
 public class RouteOptionsFragment extends Fragment {
     private ArrayList<RouteOption> generatedRoutes = new ArrayList<>();
@@ -43,6 +45,7 @@ public class RouteOptionsFragment extends Fragment {
     private TextView textRouteStatus;
     private MaterialButton buttonRegenerateRoutes;
     private ProgressBar progressRouteGeneration;
+    private LinearLayout layoutRouteOptionsContent;
     private RecyclerView recyclerRouteOptions;
     private RouteOptionAdapter routeOptionAdapter;
     private static final String TAG = "RouteOptionsFragment";
@@ -112,6 +115,7 @@ public class RouteOptionsFragment extends Fragment {
 
     private void showGeneratedRoutes(List<RouteOption> routes) {
         setLoading(false);
+        displayWeatherSummary(currentWeatherSummary);
         textRouteStatus.setVisibility(View.GONE);
         recyclerRouteOptions.setVisibility(View.VISIBLE);
         routeOptionAdapter.submitList(routes);
@@ -123,6 +127,7 @@ public class RouteOptionsFragment extends Fragment {
         layoutWeatherSummary = view.findViewById(R.id.layoutWeatherSummary);
         textWeatherSummary = view.findViewById(R.id.textWeatherSummary);
         progressRouteGeneration = view.findViewById(R.id.progressRouteGeneration);
+        layoutRouteOptionsContent = view.findViewById(R.id.layoutRouteOptionsContent);
         recyclerRouteOptions = view.findViewById(R.id.recyclerRouteOptions);
         buttonRegenerateRoutes = view.findViewById(R.id.buttonRegenerateRoutes);
         textRouteOptionsTitle.setText("Options pour " + routePreferences.getDestination());
@@ -169,7 +174,11 @@ public class RouteOptionsFragment extends Fragment {
 
     private void callAiWithWeather(WeatherForecastSummary weatherSummary) {
         currentWeatherSummary = weatherSummary;
-        displayWeatherSummary(currentWeatherSummary);
+
+        if (layoutWeatherSummary != null) {
+            layoutWeatherSummary.setVisibility(View.GONE);
+        }
+
         travelPathAiRepository.generateRoutes(
                 routePreferences,
                 weatherSummary,
@@ -328,9 +337,14 @@ public class RouteOptionsFragment extends Fragment {
     }
 
     private void showErrorState(String message) {
+        if (layoutRouteOptionsContent != null) {
+            layoutRouteOptionsContent.setGravity(Gravity.TOP);
+        }
+
         if (layoutWeatherSummary != null) {
             layoutWeatherSummary.setVisibility(View.GONE);
         }
+
         routeOptionAdapter.submitList(new ArrayList<>());
         recyclerRouteOptions.setVisibility(View.GONE);
         textRouteStatus.setVisibility(View.VISIBLE);
@@ -364,7 +378,10 @@ public class RouteOptionsFragment extends Fragment {
     private void setLoading(boolean loading) {
         progressRouteGeneration.setVisibility(loading ? View.VISIBLE : View.GONE);
         recyclerRouteOptions.setVisibility(loading ? View.GONE : View.VISIBLE);
-        textRouteStatus.setVisibility(View.VISIBLE);
+
+        if (layoutRouteOptionsContent != null) {
+            layoutRouteOptionsContent.setGravity(loading ? Gravity.CENTER : Gravity.TOP);
+        }
 
         if (layoutWeatherSummary != null && loading) {
             layoutWeatherSummary.setVisibility(View.GONE);
@@ -375,7 +392,10 @@ public class RouteOptionsFragment extends Fragment {
         }
 
         if (loading) {
+            textRouteStatus.setVisibility(View.VISIBLE);
             textRouteStatus.setText("Génération des parcours...");
+        } else {
+            textRouteStatus.setVisibility(View.GONE);
         }
     }
 
