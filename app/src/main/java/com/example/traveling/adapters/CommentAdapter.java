@@ -13,7 +13,15 @@ import com.example.traveling.models.Comment;
 
 import java.util.ArrayList;
 import java.util.List;
+import android.text.TextUtils;
+import android.widget.ImageView;
 
+import com.bumptech.glide.Glide;
+import com.example.traveling.models.UserProfile;
+import com.example.traveling.repositories.UserRepository;
+
+import java.util.HashMap;
+import java.util.Map;
 public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentViewHolder> {
 
     public interface OnCommentAuthorClickListener {
@@ -22,6 +30,8 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
 
     private OnCommentAuthorClickListener authorClickListener;
     private List<Comment> comments = new ArrayList<>();
+    private final UserRepository userRepository = new UserRepository();
+    private final Map<String, String> avatarCache = new HashMap<>();
 
     public CommentAdapter() {
     }
@@ -56,6 +66,7 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
             }
         });
         holder.textCommentBody.setText(comment.getText());
+        displayCommentAvatar(holder, comment);
     }
 
     @Override
@@ -67,13 +78,75 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.CommentV
         TextView textCommentDate;
         TextView textCommentAuthor;
         TextView textCommentBody;
+        TextView textCommentAvatarInitials;
+        ImageView imageCommentAvatar;
 
         public CommentViewHolder(@NonNull View itemView) {
             super(itemView);
             textCommentDate = itemView.findViewById(R.id.textCommentDate);
             textCommentAuthor = itemView.findViewById(R.id.textCommentAuthor);
             textCommentBody = itemView.findViewById(R.id.textCommentBody);
+            textCommentAvatarInitials = itemView.findViewById(R.id.textCommentAvatarInitials);
+            imageCommentAvatar = itemView.findViewById(R.id.imageCommentAvatar);
         }
+    }
+
+    private void displayCommentAvatar(CommentViewHolder holder, Comment comment) {
+        String userId = comment.getUserId();
+
+        holder.textCommentAvatarInitials.setText(makeInitial(comment.getAuthorName()));
+        holder.textCommentAvatarInitials.setVisibility(View.VISIBLE);
+        holder.imageCommentAvatar.setVisibility(View.GONE);
+
+        if (TextUtils.isEmpty(userId)) {
+            return;
+        }
+
+        if (avatarCache.containsKey(userId)) {
+            String cachedAvatarUrl = avatarCache.get(userId);
+            loadAvatarIntoHolder(holder, cachedAvatarUrl);
+            return;
+        }
+
+        userRepository.getUserProfile(userId, new UserRepository.OnUserProfileLoadedListener() {
+            @Override
+            public void onSuccess(UserProfile userProfile) {
+                String avatarUrl = userProfile.getAvatarUrl();
+                avatarCache.put(userId, avatarUrl != null ? avatarUrl : "");
+                loadAvatarIntoHolder(holder, avatarUrl);
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                avatarCache.put(userId, "");
+            }
+        });
+    }
+
+    private void loadAvatarIntoHolder(CommentViewHolder holder, String avatarUrl) {
+        if (TextUtils.isEmpty(avatarUrl)) {
+            holder.imageCommentAvatar.setVisibility(View.GONE);
+            holder.textCommentAvatarInitials.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        holder.textCommentAvatarInitials.setVisibility(View.GONE);
+        holder.imageCommentAvatar.setVisibility(View.VISIBLE);
+
+        Glide.with(holder.itemView.getContext())
+                .load(avatarUrl)
+                .placeholder(R.drawable.bg_avatar_circle)
+                .error(R.drawable.bg_avatar_circle)
+                .circleCrop()
+                .into(holder.imageCommentAvatar);
+    }
+
+    private String makeInitial(String name) {
+        if (TextUtils.isEmpty(name)) {
+            return "?";
+        }
+
+        return name.trim().substring(0, 1).toUpperCase();
     }
 
     private String formatRelativeTime(long timestamp) {
