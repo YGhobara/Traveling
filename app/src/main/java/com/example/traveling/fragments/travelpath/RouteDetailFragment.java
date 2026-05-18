@@ -45,6 +45,8 @@ import android.text.TextUtils;
 import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 public class RouteDetailFragment extends Fragment {
     private SavedRouteRepository savedRouteRepository;
@@ -54,7 +56,7 @@ public class RouteDetailFragment extends Fragment {
     private MaterialButton buttonExportRoutePdf;
     private ImageView imageRouteDetail;
     private RouteOption routeOption;
-
+    private ActivityResultLauncher<String> createPdfLauncher;
     public RouteDetailFragment() {
         // Required empty public constructor
     }
@@ -75,6 +77,35 @@ public class RouteDetailFragment extends Fragment {
 
         if (getArguments() != null) {
             routeOption = (RouteOption) getArguments().getSerializable("routeOption");
+        }
+        createPdfLauncher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/pdf"),
+                uri -> {
+                    if (uri == null) {
+                        return;
+                    }
+
+                    savePdfToSelectedUri(uri);
+                }
+        );
+    }
+
+    private void savePdfToSelectedUri(Uri uri) {
+        try {
+            RoutePdfExporter.writeRoutePdfToUri(requireContext(), routeOption, uri);
+
+            Toast.makeText(
+                    requireContext(),
+                    "PDF enregistré.",
+                    Toast.LENGTH_LONG
+            ).show();
+
+        } catch (Exception e) {
+            Toast.makeText(
+                    requireContext(),
+                    "Erreur lors de l'enregistrement du PDF.",
+                    Toast.LENGTH_SHORT
+            ).show();
         }
     }
 
@@ -154,29 +185,27 @@ public class RouteDetailFragment extends Fragment {
     }
 
     private void exportRoutePdf() {
-        try {
-            File pdfFile = RoutePdfExporter.exportRouteToPdf(requireContext(), routeOption);
-
-            Uri pdfUri = FileProvider.getUriForFile(
-                    requireContext(),
-                    requireContext().getPackageName() + ".fileprovider",
-                    pdfFile
-            );
-
-            Intent intent = new Intent(Intent.ACTION_SEND);
-            intent.setType("application/pdf");
-            intent.putExtra(Intent.EXTRA_STREAM, pdfUri);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-            startActivity(Intent.createChooser(intent, "Exporter le parcours en PDF"));
-
-        } catch (Exception e) {
-            Toast.makeText(
-                    requireContext(),
-                    "Erreur lors de l'export PDF.",
-                    Toast.LENGTH_SHORT
-            ).show();
+        if (routeOption == null) {
+            Toast.makeText(requireContext(),
+                    "Parcours introuvable.",
+                    Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        String fileName = makePdfFileName(routeOption.getTitle());
+        createPdfLauncher.launch(fileName);
+    }
+
+    private String makePdfFileName(String title) {
+        if (title == null || title.trim().isEmpty()) {
+            return "itineraire_traveling.pdf";
+        }
+
+        String safeTitle = title.trim()
+                .toLowerCase()
+                .replaceAll("[^a-zA-Z0-9_-]", "_");
+
+        return safeTitle + ".pdf";
     }
 
     private void setupBackButton(View view) {

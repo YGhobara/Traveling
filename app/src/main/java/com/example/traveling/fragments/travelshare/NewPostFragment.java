@@ -83,7 +83,7 @@ public class NewPostFragment extends Fragment {
     private LocationSuggestion selectedLocationSuggestion;
     private String latestLocationQuery = "";
 
-    private MaterialButton buttonRecordVoice;
+    private android.widget.ImageButton buttonRecordVoice;
     private MaterialButton buttonDeleteVoice;
     private android.widget.TextView textVoiceStatus;
     private android.widget.ImageButton buttonPlayVoice;
@@ -570,7 +570,8 @@ public class NewPostFragment extends Fragment {
             mediaRecorder.start();
 
             isRecordingVoice = true;
-            buttonRecordVoice.setText("Arrêter");
+            buttonRecordVoice.setImageResource(R.drawable.ic_stop);
+            buttonRecordVoice.setContentDescription("Arrêter l'enregistrement");
             buttonDeleteVoice.setEnabled(false);
             textVoiceStatus.setText("Enregistrement en cours...");
             startVoiceTimer();
@@ -593,7 +594,8 @@ public class NewPostFragment extends Fragment {
             isRecordingVoice = false;
             releaseMediaRecorder();
 
-            buttonRecordVoice.setText("Réenregistrer");
+            buttonRecordVoice.setImageResource(R.drawable.ic_mic);
+            buttonRecordVoice.setContentDescription("Réenregistrer une note vocale");
             buttonDeleteVoice.setEnabled(true);
             buttonPlayVoice.setEnabled(true);
             textVoiceStatus.setText("Note vocale enregistrée.");
@@ -621,7 +623,8 @@ public class NewPostFragment extends Fragment {
         recordedAudioFile = null;
         uploadedAudioUrl = null;
 
-        buttonRecordVoice.setText("Enregistrer");
+        buttonRecordVoice.setImageResource(R.drawable.ic_mic);
+        buttonRecordVoice.setContentDescription("Enregistrer une note vocale");
         buttonDeleteVoice.setEnabled(false);
         textVoiceStatus.setText("Aucune note vocale enregistrée.");
         stopVoicePlayback();

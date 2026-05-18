@@ -269,14 +269,16 @@
                             android:layout_marginTop="12dp"
                             android:orientation="horizontal">
 
-                            <com.google.android.material.button.MaterialButton
+                            <ImageButton
                                 android:id="@+id/buttonRecordVoice"
-                                style="?attr/materialButtonOutlinedStyle"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
                                 android:layout_marginEnd="6dp"
-                                android:layout_weight="1"
-                                android:text="Enregistrer" />
+                                android:background="@android:color/transparent"
+                                android:contentDescription="Enregistrer une note vocale"
+                                android:padding="10dp"
+                                android:src="@drawable/ic_mic"
+                                app:tint="@color/travel_primary" />
 
                             <ImageButton
                                 android:id="@+id/buttonPlayVoice"

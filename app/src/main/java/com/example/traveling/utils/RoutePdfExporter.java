@@ -11,6 +11,17 @@ import com.example.traveling.models.RouteStep;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Locale;
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.net.Uri;
+import java.io.FileInputStream;
+import java.io.OutputStream;
+import java.io.FileInputStream;
+import java.io.OutputStream;
 
 public class RoutePdfExporter {
 
@@ -139,6 +150,90 @@ public class RoutePdfExporter {
         pdfDocument.close();
 
         return file;
+    }
+
+    public static void writeRoutePdfToUri(Context context,
+                                          RouteOption routeOption,
+                                          Uri destinationUri) throws Exception {
+        File tempFile = exportRouteToPdf(context, routeOption);
+
+        try (FileInputStream inputStream = new FileInputStream(tempFile);
+             OutputStream outputStream = context.getContentResolver().openOutputStream(destinationUri)) {
+
+            if (outputStream == null) {
+                throw new IllegalStateException("Impossible d'ouvrir le fichier de destination.");
+            }
+
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+
+            outputStream.flush();
+        }
+    }
+
+    public static Uri saveRoutePdfToDownloads(Context context, RouteOption routeOption) throws Exception {
+        File tempFile = exportRouteToPdf(context, routeOption);
+        String fileName = makeSafeFileName(routeOption.getTitle()) + ".pdf";
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContentResolver resolver = context.getContentResolver();
+
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
+            values.put(MediaStore.Downloads.MIME_TYPE, "application/pdf");
+            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Traveling");
+
+            Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+
+            if (uri == null) {
+                throw new IllegalStateException("Impossible de créer le fichier PDF.");
+            }
+
+            try (OutputStream outputStream = resolver.openOutputStream(uri);
+                 FileInputStream inputStream = new FileInputStream(tempFile)) {
+
+                if (outputStream == null) {
+                    throw new IllegalStateException("Impossible d'ouvrir le fichier PDF.");
+                }
+
+                copyStream(inputStream, outputStream);
+            }
+
+            return uri;
+        }
+
+        File downloadsDir = new File(
+                context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+                "Traveling"
+        );
+
+        if (!downloadsDir.exists()) {
+            downloadsDir.mkdirs();
+        }
+
+        File outputFile = new File(downloadsDir, fileName);
+
+        try (FileInputStream inputStream = new FileInputStream(tempFile);
+             FileOutputStream outputStream = new FileOutputStream(outputFile)) {
+            copyStream(inputStream, outputStream);
+        }
+
+        return Uri.fromFile(outputFile);
+    }
+
+    private static void copyStream(FileInputStream inputStream, OutputStream outputStream) throws Exception {
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, bytesRead);
+        }
+
+        outputStream.flush();
     }
 
     private static int drawMultilineText(Canvas canvas, String text, int x, int y, Paint paint, int maxCharsPerLine) {
